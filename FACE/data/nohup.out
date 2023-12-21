@@ -1,0 +1,200 @@
+(200000, 5)
+old loss mean - new loss mean: 134.1245
+2 * std: 15621.3965
+Mean JS divergence: 0.0440
+old loss mean - new loss mean: 31.8140
+2 * std: 15976.7334
+Mean JS divergence: 0.0440
+old loss mean - new loss mean: 71.1675
+2 * std: 16892.7617
+Mean JS divergence: 0.0419
+old loss mean - new loss mean: 43.0605
+2 * std: 18413.9004
+Mean JS divergence: 0.0415
+old loss mean - new loss mean: 102.2485
+2 * std: 16918.6484
+Mean JS divergence: 0.0424
+old loss mean - new loss mean: 12.4561
+2 * std: 17228.0020
+Mean JS divergence: 0.0391
+old loss mean - new loss mean: 132.4062
+2 * std: 17259.6230
+Mean JS divergence: 0.0437
+old loss mean - new loss mean: 132.3818
+2 * std: 17286.5430
+Mean JS divergence: 0.0419
+old loss mean - new loss mean: 31.1455
+2 * std: 18522.0273
+Mean JS divergence: 0.0383
+old loss mean - new loss mean: 154.6694
+2 * std: 16546.2207
+Mean JS divergence: 0.0380
+old loss mean - new loss mean: 4480.5767
+2 * std: 15843.2852
+Mean JS divergence: 0.2755
+old loss mean - new loss mean: 4380.0454
+2 * std: 15734.6797
+Mean JS divergence: 0.2748
+old loss mean - new loss mean: 4523.2935
+2 * std: 16083.2979
+Mean JS divergence: 0.2741
+old loss mean - new loss mean: 4488.6973
+2 * std: 17656.2422
+Mean JS divergence: 0.2750
+old loss mean - new loss mean: 4590.2930
+2 * std: 18031.9121
+Mean JS divergence: 0.2744
+old loss mean - new loss mean: 4524.6836
+2 * std: 17818.7617
+Mean JS divergence: 0.2742
+old loss mean - new loss mean: 4494.2476
+2 * std: 16759.1367
+Mean JS divergence: 0.2746
+old loss mean - new loss mean: 4599.7129
+2 * std: 17302.2207
+Mean JS divergence: 0.2758
+old loss mean - new loss mean: 4587.5068
+2 * std: 17871.3359
+Mean JS divergence: 0.2751
+old loss mean - new loss mean: 4510.1948
+2 * std: 15893.2217
+Mean JS divergence: 0.2737
+old loss mean - new loss mean: 4835.7461
+2 * std: 17830.0801
+Mean JS divergence: 0.0463
+old loss mean - new loss mean: 4903.4482
+2 * std: 17030.0879
+Mean JS divergence: 0.0479
+old loss mean - new loss mean: 5128.7578
+2 * std: 17594.9805
+Mean JS divergence: 0.0469
+old loss mean - new loss mean: 5007.8765
+2 * std: 17020.0684
+Mean JS divergence: 0.0440
+old loss mean - new loss mean: 5109.7407
+2 * std: 16094.8613
+Mean JS divergence: 0.0413
+\n*************************Random sample mode**************************\n
+old loss mean - new loss mean: 22.8794
+2 * std: 17658.2891
+Mean JS divergence: 0.0412
+old loss mean - new loss mean: 7.1943
+2 * std: 17933.4375
+Mean JS divergence: 0.0414
+old loss mean - new loss mean: 74.5928
+2 * std: 17505.7715
+Mean JS divergence: 0.0424
+old loss mean - new loss mean: 131.2485
+2 * std: 18435.8438
+Mean JS divergence: 0.0408
+old loss mean - new loss mean: 244.8687
+2 * std: 16947.7793
+Mean JS divergence: 0.0422
+old loss mean - new loss mean: 104.0400
+2 * std: 18122.8359
+Mean JS divergence: 0.0418
+old loss mean - new loss mean: 40.9619
+2 * std: 18255.6484
+Mean JS divergence: 0.0421
+old loss mean - new loss mean: 70.1924
+2 * std: 18341.8242
+Mean JS divergence: 0.0405
+old loss mean - new loss mean: 278.7178
+2 * std: 16656.4180
+Mean JS divergence: 0.0410
+old loss mean - new loss mean: 278.6519
+2 * std: 17273.5703
+Mean JS divergence: 0.0420
+\n*************************Single sample mode**************************\n
+old loss mean - new loss mean: 244.0254
+2 * std: 17603.9648
+Mean JS divergence: 0.0392
+old loss mean - new loss mean: 213.1616
+2 * std: 16877.7500
+Mean JS divergence: 0.0407
+old loss mean - new loss mean: 144.3379
+2 * std: 16892.8125
+Mean JS divergence: 0.0413
+old loss mean - new loss mean: 247.8242
+2 * std: 17719.8613
+Mean JS divergence: 0.0404
+old loss mean - new loss mean: 161.4097
+2 * std: 15816.6904
+Mean JS divergence: 0.0409
+old loss mean - new loss mean: 421.7661
+2 * std: 18235.1992
+Mean JS divergence: 0.0422
+old loss mean - new loss mean: 13.9829
+2 * std: 16338.9844
+Mean JS divergence: 0.0413
+old loss mean - new loss mean: 8.7437
+2 * std: 17359.0469
+Mean JS divergence: 0.0418
+old loss mean - new loss mean: 297.1616
+2 * std: 17843.5684
+Mean JS divergence: 0.0397
+old loss mean - new loss mean: 93.7544
+2 * std: 16343.3975
+Mean JS divergence: 0.0419
+\n*************************Random sample mode**************************\n
+old loss mean - new loss mean: 117.0308
+2 * std: 16799.0391
+Mean JS divergence: 0.0397
+old loss mean - new loss mean: 79.4683
+2 * std: 17012.7812
+Mean JS divergence: 0.0406
+old loss mean - new loss mean: 29.9478
+2 * std: 16630.9570
+Mean JS divergence: 0.0391
+old loss mean - new loss mean: 56.6074
+2 * std: 17855.9238
+Mean JS divergence: 0.0428
+old loss mean - new loss mean: 89.4282
+2 * std: 19320.4590
+Mean JS divergence: 0.0417
+old loss mean - new loss mean: 206.8896
+2 * std: 16061.0430
+Mean JS divergence: 0.0393
+old loss mean - new loss mean: 47.9307
+2 * std: 19302.6680
+Mean JS divergence: 0.0391
+old loss mean - new loss mean: 40.9170
+2 * std: 18928.7773
+Mean JS divergence: 0.0398
+old loss mean - new loss mean: 70.8193
+2 * std: 17377.8164
+Mean JS divergence: 0.0408
+old loss mean - new loss mean: 91.5078
+2 * std: 16217.1777
+Mean JS divergence: 0.0464
+\n*************************Single sample mode**************************\n
+old loss mean - new loss mean: 2930.8511
+2 * std: 16757.8613
+Mean JS divergence: 0.4760
+old loss mean - new loss mean: 3445.4113
+2 * std: 18309.5840
+Mean JS divergence: 0.4343
+old loss mean - new loss mean: 789.3594
+2 * std: 17273.8145
+Mean JS divergence: 0.5754
+old loss mean - new loss mean: 204.2944
+2 * std: 15279.1816
+Mean JS divergence: 0.4469
+old loss mean - new loss mean: 3102.4658
+2 * std: 17101.8223
+Mean JS divergence: 0.4316
+old loss mean - new loss mean: 3505.7058
+2 * std: 17407.4336
+Mean JS divergence: 0.3932
+old loss mean - new loss mean: 8795.7036
+2 * std: 16794.3828
+Mean JS divergence: 0.5037
+old loss mean - new loss mean: 1667.7390
+2 * std: 16870.2285
+Mean JS divergence: 0.4492
+old loss mean - new loss mean: 3507.7283
+2 * std: 16583.0156
+Mean JS divergence: 0.5754
+old loss mean - new loss mean: 4842.4825
+2 * std: 17701.2480
+Mean JS divergence: 0.7688
