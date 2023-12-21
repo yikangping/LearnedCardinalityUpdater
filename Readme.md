@@ -46,17 +46,63 @@ cd ./LearnedCardinalityUpdater
 
 # 训练初始模型，dataset参数有两个可用[census(default), forest]，全局统一
 # epoch参数默认值20，设定为200一般就会收敛，其余参数设置参考代码，模型保存在./models目录下，origin打头
+
 python Naru/train_model.py --dataset census --epoch 200
 
 # 生成漂移更新数据，并将更新后的数据集保存在./data目录相应数据集文件夹下的permuted_dataset.csv中。
 # eval_type参数有两种[estimate(default)，drift]，前者分析现有模型的基数估计准确率，后者生成漂移数据集并检测是否发生了漂移
+
 python Naru/eval_model.py --dataset census --eval_type drift
 
 # 基于permuted_dataset.csv对模型进行增量训练，共有三种更新方法：Finetune、Update（DDUp）、Adapt（our），分别生成FT、update、adapt打头的三个更新模型
 # epoch默认20，这里可以设置一个较小的数值检测固定轮数下模型的优化效率，也可以试着训练到收敛为止，这里需要记录一下不同方法的增量更新时间作为实验结果的一部分
+
 python Naru/incremental_train.py --dataset census --epoch 30
 
 #从models目录中收集所有带--dataset名的模型，在更新数据集上自动生成50条SQL语句，测试基数估计的准确性，这里的准确性指标需要记录
+
 python Naru/eval_model.py --dataset census
 ```
 
+- data drifts detection：
+
+```shell
+cd ./LearnedCardinalityUpdater/FACE
+
+# FACE是THU李国良团队做的学习型基数估计器的工作，在他的开源代码中存了两个训练好的模型，因此调试时无需重新训练，但是他的开源代码主体用Jupiter notebook编写，用命令行运行的时候不是很好用
+
+cd ./data
+
+# 为创造增量更新环境，我们使用FACE提供的原始数据集创建子集进行测试，本命令从原始数据集BJAQ中抽取200000条数据作为一轮更新测试的初始数据集，原始数据保存在old_data目录下（务必不要覆盖），采样数据集会保存在同级目录下，参数具体功能参照文件__main__函数部分
+
+python table_sample.py --run init --init_size 200000
+
+# 测试当前数据集上模型的预测精度
+运行Evaluate-BJAQ.ipynb
+
+# 抽取增量更新数据，更新数据集，并进行数据漂移判定，输出mean reduction、2*std、Mean JS divergence三个参数，其中mean reduction>2*std是对照方法DDUp采用的drifts detection方法，我们的方法是通过JS divergence直观判断数据分布的漂移情况。
+# 更新数据的构建方法有三种：
+# sample:从当前数据集中随机采样构成更新数据，对模型精度影响非常小，可视为不发生数据漂移
+# permute:对不同属性，从当前数据集中随机采样属性值，构建重组数据，抽取若干条构成更新数据，是DDUp中提出的数据漂移的主要来源，Naru中采用的数据更新方法也是这种
+# single:从当前数据集中随机采样一条数据，并复制若干条构成更新数据，这是DDUp方法判断会出现问题的一种情形，也是我们的方法的主要创新点来源
+
+python table_sample.py --run update --update_type sample --update_size 20000 --sample_size 20000
+# 测试更新后的数据集上模型的预测精度
+运行Evaluate-BJAQ.ipynb
+
+# 本实验测试中需要记录数据漂移判定的几个量度值和计算时间，以及后续测试中模型的预测精度
+
+```
+
+## TBD
+
+- 功能实现：
+  - 
+
+
+
+## 参考文献
+
+[1] Wang J, Chai C, Liu J, et al. FACE: A normalizing flow based cardinality estimator[J]. Proceedings of the VLDB Endowment, 2021, 15(1): 72-84.
+
+[2] Kurmanji M, Triantafillou P. Detect, Distill and Update: Learned DB Systems Facing Out of Distribution Data[J]. Proceedings of the ACM on Management of Data, 2023, 1(1): 1-27.
