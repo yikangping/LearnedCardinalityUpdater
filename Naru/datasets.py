@@ -307,7 +307,7 @@ def LoadPermutedForest(filename="forest.csv", permute=True):
     return common.CsvTable("census", data, cols=data.columns), landmarks
 
 
-def _read_npy_as_df(abs_file_path):
+def _load_npy_as_df(abs_file_path):
     data = np.load(abs_file_path)
 
     # Calculate the number of columns in the data
@@ -321,22 +321,81 @@ def _read_npy_as_df(abs_file_path):
     return df, column_names
 
 
-def _load_npy_dataset(file_name, table_name):
-    # 读取数据
-    file_path = "./FACE/data/{}".format(file_name)
-    abs_file_path = get_absolute_path(file_path)
-    df, cols = _read_npy_as_df(abs_file_path)
-
-    # 处理数据
+def clean_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(axis=1, how="all")
     df_obj = df.select_dtypes(["object"])
     df[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
     df.replace("", np.nan, inplace=True)
     df.dropna(inplace=True)
+    return df
 
-    print("load_npy_dataset - df.shape =", df.shape)
+
+def _load_npy_dataset(file_name: str, table_name: str):
+    # 读取数据
+    file_path = "./FACE/data/{}".format(file_name)
+    abs_file_path = get_absolute_path(file_path)
+    df, cols = _load_npy_as_df(abs_file_path)
+
+    # 处理数据
+    df = clean_df(df)
+
+    print("_load_npy_dataset - df.shape =", df.shape)
 
     return common.CsvTable(table_name, df, cols)
+
+
+def _load_permuted_npy_dataset(dataset_name, permute=True):
+    # 读取数据
+    npy_file_path = f"./FACE/data/{dataset_name}.npy"
+    permuted_csv_file_path = f"./data/{dataset_name}/permuted_dataset.csv"
+    if permute:
+        # 读取原始npy文件
+        abs_file_path = get_absolute_path(npy_file_path)
+        df, cols = _load_npy_as_df(abs_file_path)
+    else:
+        # 读取permute后的csv文件
+        abs_file_path = get_absolute_path(permuted_csv_file_path)
+        df = pd.read_csv(abs_file_path, sep=",")
+
+    # 处理数据
+    df = clean_df(df)
+
+    if permute:
+        columns_to_sort = df.columns
+
+        sorted_columns = pd.concat(
+            [
+                df[col].sort_values(ignore_index=True).reset_index(drop=True)
+                for col in columns_to_sort
+            ],
+            axis=1,
+            ignore_index=True,
+        )
+        sorted_columns.columns = df.columns
+        update_sample = sorted_columns.sample(frac=0.2)
+        data = pd.concat([df, update_sample])
+        landmarks = len(df) + np.linspace(0, len(update_sample), 2, dtype=np.int32)
+        save_path = get_absolute_path(permuted_csv_file_path)
+        data.to_csv(save_path, sep=",", index=None)
+        print(f"{str(save_path)} Saved")
+    else:
+        # update_sample = df.sample(frac=0.2)
+        data = df
+        lenth = int(len(data) * 5 / 6)
+        landmarks = lenth + np.linspace(0, len(data) - lenth, 2, dtype=np.int32)
+
+    print(
+        "data size: {}, total size: {}, split index: {}".format(
+            len(df), len(data), landmarks
+        )
+    )
+    del df
+
+    if permute:
+        del sorted_columns
+        del update_sample
+
+    return common.CsvTable(dataset_name, data, cols=data.columns), landmarks
 
 
 def LoadBJAQ():
@@ -345,6 +404,14 @@ def LoadBJAQ():
 
 def LoadPower():
     return _load_npy_dataset(file_name="power.npy", table_name="power")
+
+
+def LoadPermutedBJAQ(permute=True):
+    return _load_permuted_npy_dataset(dataset_name="BJAQ", permute=permute)
+
+
+def LoadPermutedPower(permute=True):
+    return _load_permuted_npy_dataset(dataset_name="power", permute=permute)
 
 
 if __name__ == "__main__":

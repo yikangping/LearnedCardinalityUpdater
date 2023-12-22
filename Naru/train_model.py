@@ -11,10 +11,9 @@ import common
 import datasets
 import made
 import transformer
-from constants.dataset_constants import ALLOWED_DATASETS
+from constants.dataset_constants import validate_dataset
 from utils.model_util import save_model
 from utils.torch_util import get_torch_device
-
 
 DEVICE = get_torch_device()
 
@@ -342,7 +341,7 @@ def TrainTask(seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ALLOWED_DATASETS, "Unknown dataset: {}".format(args.dataset)
+    validate_dataset(args.dataset)  # Validate dataset name
     if args.dataset == "census":
         table = datasets.LoadCensus()
     elif args.dataset == "forest":
@@ -351,6 +350,8 @@ def TrainTask(seed=0):
         table = datasets.LoadBJAQ()
     elif args.dataset == "power":
         table = datasets.LoadPower()
+    else:
+        return
 
     table_bits = Entropy(
         table,
@@ -370,15 +371,12 @@ def TrainTask(seed=0):
             cols_to_train=table.columns, fixed_ordering=fixed_ordering, seed=seed
         )
     else:
-        if args.dataset in ALLOWED_DATASETS:
-            model = MakeMade(
-                scale=args.fc_hiddens,
-                cols_to_train=table.columns,
-                seed=seed,
-                fixed_ordering=fixed_ordering,
-            )
-        else:
-            assert False, args.dataset
+        model = MakeMade(
+            scale=args.fc_hiddens,
+            cols_to_train=table.columns,
+            seed=seed,
+            fixed_ordering=fixed_ordering,
+        )
 
     mb = ReportModel(model)
 

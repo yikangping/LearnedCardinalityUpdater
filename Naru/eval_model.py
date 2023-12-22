@@ -3,11 +3,9 @@ import argparse
 import collections
 import glob
 import os
-from pathlib import Path
 import pickle
 import re
 import time
-import shutil
 
 import numpy as np
 import pandas as pd
@@ -18,124 +16,131 @@ import datasets
 import estimators as estimators_lib
 import made
 import transformer
+from constants.dataset_constants import validate_dataset
+from constants.evaluation_constants import validate_eval_type
 from sqlParser import Parser
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
+from utils.torch_util import get_torch_device
 
 # For inference speed.
 torch.backends.cudnn.deterministic = False
 torch.backends.cudnn.benchmark = True
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print("Device", DEVICE)
+DEVICE = get_torch_device()
 
-parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    "--inference-opts",
-    action="store_true",
-    help="Tracing optimization for better latency.",
-)
+def create_parser():
+    parser = argparse.ArgumentParser()
 
-parser.add_argument("--num-queries", type=int, default=50, help="# queries.")
-parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
-parser.add_argument(
-    "--err-csv", type=str, default="results.csv", help="Save result csv to what path?"
-)
-parser.add_argument("--glob", type=str, help="Checkpoints to glob under models/.")
-parser.add_argument(
-    "--blacklist", type=str, help="Remove some globbed checkpoint files."
-)
-parser.add_argument(
-    "--psample",
-    type=int,
-    default=2000,
-    help="# of progressive samples to use per query.",
-)
-parser.add_argument(
-    "--column-masking",
-    action="store_true",
-    help="Turn on wildcard skipping.  Requires checkpoints be trained with "
-         "column masking.",
-)
-parser.add_argument("--order", nargs="+", type=int, help="Use a specific order?")
+    parser.add_argument(
+        "--inference-opts",
+        action="store_true",
+        help="Tracing optimization for better latency.",
+    )
 
-# MADE.
-parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
-parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
-parser.add_argument("--residual", action="store_true", help="ResMade?")
-parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
-parser.add_argument(
-    "--inv-order",
-    action="store_true",
-    help="Set this flag iff using MADE and specifying --order. Flag --order"
-         "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
-         "MADE, however, is implemented to take in an argument the inverse "
-         "semantics (element i indicates the position of variable i).  Transformer"
-         " does not have this issue and thus should not have this flag on.",
-)
-parser.add_argument(
-    "--input-encoding",
-    type=str,
-    default="binary",
-    help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
-)
-parser.add_argument(
-    "--output-encoding",
-    type=str,
-    default="one_hot",
-    help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
-         "then input encoding should be set to embed as well.",
-)
+    parser.add_argument("--num-queries", type=int, default=50, help="# queries.")
+    parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
+    parser.add_argument(
+        "--err-csv", type=str, default="results.csv", help="Save result csv to what path?"
+    )
+    parser.add_argument("--glob", type=str, help="Checkpoints to glob under models/.")
+    parser.add_argument(
+        "--blacklist", type=str, help="Remove some globbed checkpoint files."
+    )
+    parser.add_argument(
+        "--psample",
+        type=int,
+        default=2000,
+        help="# of progressive samples to use per query.",
+    )
+    parser.add_argument(
+        "--column-masking",
+        action="store_true",
+        help="Turn on wildcard skipping.  Requires checkpoints be trained with "
+             "column masking.",
+    )
+    parser.add_argument("--order", nargs="+", type=int, help="Use a specific order?")
 
-# Transformer.
-parser.add_argument(
-    "--heads",
-    type=int,
-    default=0,
-    help="Transformer: num heads.  A non-zero value turns on Transformer"
-         " (otherwise MADE/ResMADE).",
-)
-parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
-parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
-parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
-parser.add_argument(
-    "--transformer-act", type=str, default="gelu", help="Transformer activation."
-)
+    # MADE.
+    parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
+    parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
+    parser.add_argument("--residual", action="store_true", help="ResMade?")
+    parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
+    parser.add_argument(
+        "--inv-order",
+        action="store_true",
+        help="Set this flag iff using MADE and specifying --order. Flag --order"
+             "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
+             "MADE, however, is implemented to take in an argument the inverse "
+             "semantics (element i indicates the position of variable i).  Transformer"
+             " does not have this issue and thus should not have this flag on.",
+    )
+    parser.add_argument(
+        "--input-encoding",
+        type=str,
+        default="binary",
+        help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
+    )
+    parser.add_argument(
+        "--output-encoding",
+        type=str,
+        default="one_hot",
+        help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
+             "then input encoding should be set to embed as well.",
+    )
 
-# Estimators to enable.
-parser.add_argument(
-    "--run-sampling", action="store_true", help="Run a materialized sampler?"
-)
-parser.add_argument(
-    "--run-maxdiff", action="store_true", help="Run the MaxDiff histogram?"
-)
-parser.add_argument(
-    "--run-bn", action="store_true", help="Run Bayes nets? If enabled, run BN only."
-)
+    # Transformer.
+    parser.add_argument(
+        "--heads",
+        type=int,
+        default=0,
+        help="Transformer: num heads.  A non-zero value turns on Transformer"
+             " (otherwise MADE/ResMADE).",
+    )
+    parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
+    parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
+    parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
+    parser.add_argument(
+        "--transformer-act", type=str, default="gelu", help="Transformer activation."
+    )
 
-# Bayes nets.
-parser.add_argument(
-    "--bn-samples", type=int, default=200, help="# samples for each BN inference."
-)
-parser.add_argument(
-    "--bn-root", type=int, default=0, help="Root variable index for chow liu tree."
-)
-# Maxdiff
-parser.add_argument(
-    "--maxdiff-limit",
-    type=int,
-    default=30000,
-    help="Maximum number of partitions of the Maxdiff histogram.",
-)
+    # Estimators to enable.
+    parser.add_argument(
+        "--run-sampling", action="store_true", help="Run a materialized sampler?"
+    )
+    parser.add_argument(
+        "--run-maxdiff", action="store_true", help="Run the MaxDiff histogram?"
+    )
+    parser.add_argument(
+        "--run-bn", action="store_true", help="Run Bayes nets? If enabled, run BN only."
+    )
 
-parser.add_argument(
-    "--eval_type",
-    type=str,
-    default="estimate",
-    help="Model evaluation type, estimate or drift",
-)
+    # Bayes nets.
+    parser.add_argument(
+        "--bn-samples", type=int, default=200, help="# samples for each BN inference."
+    )
+    parser.add_argument(
+        "--bn-root", type=int, default=0, help="Root variable index for chow liu tree."
+    )
+    # Maxdiff
+    parser.add_argument(
+        "--maxdiff-limit",
+        type=int,
+        default=30000,
+        help="Maximum number of partitions of the Maxdiff histogram.",
+    )
 
-args = parser.parse_args()
+    parser.add_argument(
+        "--eval_type",
+        type=str,
+        default="estimate",
+        help="Model evaluation type, estimate or drift",
+    )
+
+    return parser
+
+
+args = create_parser().parse_args()
 
 
 def Entropy(name, data, bases=None):
@@ -1274,7 +1279,7 @@ def ConceptDriftTest(seed=0):
 
 
 def test_for_drift(
-        pre_model, seed=0, bootstrap=1000, sample_size=500, data_type="permute"
+        pre_model, seed=0, bootstrap=1000, sample_size=500, data_type="raw"
 ):
     torch.manual_seed(0)
     np.random.seed(0)
@@ -1374,23 +1379,18 @@ def test_for_drift(
         else:
             return "no-drift", t2 - t1
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        if data_type == "raw":
-            table, split = datasets.LoadPermutedCensus(permute=True)
-        else:
-            table, split = datasets.LoadPermutedCensus(permute=False)
+    validate_dataset(args.dataset)  # 检查dataset是否合法
+    is_raw: bool = data_type == "raw"
+    if args.dataset == "census":
+        table, split = datasets.LoadPermutedCensus(permute=is_raw)
     elif args.dataset == "forest":
-        if data_type == "raw":
-            table, split = datasets.LoadPermutedForest(permute=True)
-        else:
-            table, split = datasets.LoadPermutedForest(permute=False)
+        table, split = datasets.LoadPermutedForest(permute=is_raw)
+    elif args.dataset == "bjaq":
+        table, split = datasets.LoadPermutedBJAQ(permute=is_raw)
+    elif args.dataset == "power":
+        table, split = datasets.LoadPermutedPower(permute=is_raw)
+    else:
+        return
 
     table_bits = Entropy(
         table,
@@ -1406,19 +1406,16 @@ def test_for_drift(
 
     # print(table.data.info())
 
-    if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-        model = MakeMade(
-            scale=args.fc_hiddens,
-            cols_to_train=table.columns,
-            seed=seed,
-            fixed_ordering=fixed_ordering,
-        )
+    model = MakeMade(
+        scale=args.fc_hiddens,
+        cols_to_train=table.columns,
+        seed=seed,
+        fixed_ordering=fixed_ordering,
+    )
 
-        # model.load_state_dict(torch.load(args.glob))
-        model.load_state_dict(torch.load(pre_model))
-        model.eval()
-    else:
-        assert False, args.dataset
+    # model.load_state_dict(torch.load(args.glob))
+    model.load_state_dict(torch.load(pre_model))
+    model.eval()
 
     # mb = ReportModel(model)
 
@@ -1433,7 +1430,7 @@ def test_for_drift(
 
 
 def main():
-    assert args.eval_type in ["estimate", "drift"], "Wrong Eval_type: {}!".format(args.eval_type)
+    validate_eval_type(args.eval_type)
 
     if args.eval_type == "estimate":
         Model_Eval()
@@ -1442,6 +1439,7 @@ def main():
         relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
         absolute_model_paths = get_absolute_path(relative_model_paths)
         model_paths = glob.glob(str(absolute_model_paths))
+        print("Count of model paths =", len(model_paths))
         for model_path in model_paths:
             test_for_drift(
                 pre_model=model_path, data_type="raw"

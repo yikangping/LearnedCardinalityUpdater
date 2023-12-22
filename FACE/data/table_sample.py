@@ -1,18 +1,18 @@
+import argparse
 import os
+import time
+
+import nflows.nn as nn_
 import numpy as np
 import torch
-import scipy
-import argparse
-import time
-from nflows import transforms
-from nflows import distributions
-from nflows import utils
-from nflows import flows
-import nflows.nn as nn_
 import torch.nn as nn
 import torch.nn.functional as F
+from nflows import distributions
+from nflows import flows
+from nflows import transforms
+from nflows import utils
 
-from constants.dataset_constants import ALLOWED_DATASETS
+from constants.dataset_constants import validate_dataset
 
 PROJECT_PATH = "../"
 GPU_ID = 1
@@ -302,7 +302,7 @@ def main():
 
     # 提取参数
     args = parse_args()
-    assert args.dataset in ALLOWED_DATASETS, "Unknown dataset: {}".format(args.dataset)
+    validate_dataset(args.dataset)
     if args.dataset == "bjaq":
         root_file = "./old_data/BJAQ.npy"
         save_file = "BJAQ.npy"
