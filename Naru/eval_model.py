@@ -1432,7 +1432,7 @@ def test_for_drift(
     print("Test result: {}".format(output))
 
 
-if __name__ == "__main__":
+def main():
     assert args.eval_type in ["estimate", "drift"], "Wrong Eval_type: {}!".format(args.eval_type)
 
     if args.eval_type == "estimate":
@@ -1459,3 +1459,7 @@ if __name__ == "__main__":
     # test_for_drift(
     #     pre_model="../models/origin-census-22.5MB-model26.797-data14.989-200epochs-seed0.pt", data_type="raw"
     # )
+
+
+if __name__ == "__main__":
+    main()
