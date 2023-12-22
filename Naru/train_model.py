@@ -11,89 +11,95 @@ import common
 import datasets
 import made
 import transformer
+from constants.dataset_constants import ALLOWED_DATASETS
 from utils.model_util import save_model
+from utils.torch_util import get_torch_device
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print("Device", DEVICE)
 
-parser = argparse.ArgumentParser()
+DEVICE = get_torch_device()
 
-# Training.
-parser.add_argument("--dataset", type=str, default="dmv-tiny", help="Dataset.")
-parser.add_argument("--num-gpus", type=int, default=0, help="#gpus.")
-parser.add_argument("--bs", type=int, default=1024, help="Batch size.")
-parser.add_argument(
-    "--warmups",
-    type=int,
-    default=0,
-    help="Learning rate warmup steps.  Crucial for Transformer.",
-)
-parser.add_argument(
-    "--epochs", type=int, default=20, help="Number of epochs to train for."
-)
-parser.add_argument("--constant-lr", type=float, default=None, help="Constant LR?")
-parser.add_argument(
-    "--column-masking",
-    action="store_true",
-    help="Column masking training, which permits wildcard skipping"
-    " at querying time.",
-)
 
-# MADE.
-parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
-parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
-parser.add_argument("--residual", action="store_true", help="ResMade?")
-parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
-parser.add_argument(
-    "--inv-order",
-    action="store_true",
-    help="Set this flag iff using MADE and specifying --order. Flag --order "
-    "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
-    "MADE, however, is implemented to take in an argument the inverse "
-    "semantics (element i indicates the position of variable i).  Transformer"
-    " does not have this issue and thus should not have this flag on.",
-)
-parser.add_argument(
-    "--input-encoding",
-    type=str,
-    default="binary",
-    help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
-)
-parser.add_argument(
-    "--output-encoding",
-    type=str,
-    default="one_hot",
-    help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
-    "then input encoding should be set to embed as well.",
-)
+def create_parser():
+    parser = argparse.ArgumentParser()
 
-# Transformer.
-parser.add_argument(
-    "--heads",
-    type=int,
-    default=0,
-    help="Transformer: num heads.  A non-zero value turns on Transformer"
-    " (otherwise MADE/ResMADE).",
-)
-parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
-parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
-parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
-parser.add_argument(
-    "--transformer-act", type=str, default="gelu", help="Transformer activation."
-)
+    # Training.
+    parser.add_argument("--dataset", type=str, default="dmv-tiny", help="Dataset.")
+    parser.add_argument("--num-gpus", type=int, default=0, help="#gpus.")
+    parser.add_argument("--bs", type=int, default=1024, help="Batch size.")
+    parser.add_argument(
+        "--warmups",
+        type=int,
+        default=0,
+        help="Learning rate warmup steps.  Crucial for Transformer.",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=20, help="Number of epochs to train for."
+    )
+    parser.add_argument("--constant-lr", type=float, default=None, help="Constant LR?")
+    parser.add_argument(
+        "--column-masking",
+        action="store_true",
+        help="Column masking training, which permits wildcard skipping"
+        " at querying time.",
+    )
 
-# Ordering.
-parser.add_argument("--num-orderings", type=int, default=1, help="Number of orderings.")
-parser.add_argument(
-    "--order",
-    nargs="+",
-    type=int,
-    required=False,
-    help="Use a specific ordering.  "
-    "Format: e.g., [0 2 1] means variable 2 appears second.",
-)
+    # MADE.
+    parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
+    parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
+    parser.add_argument("--residual", action="store_true", help="ResMade?")
+    parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
+    parser.add_argument(
+        "--inv-order",
+        action="store_true",
+        help="Set this flag iff using MADE and specifying --order. Flag --order "
+        "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
+        "MADE, however, is implemented to take in an argument the inverse "
+        "semantics (element i indicates the position of variable i).  Transformer"
+        " does not have this issue and thus should not have this flag on.",
+    )
+    parser.add_argument(
+        "--input-encoding",
+        type=str,
+        default="binary",
+        help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
+    )
+    parser.add_argument(
+        "--output-encoding",
+        type=str,
+        default="one_hot",
+        help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
+        "then input encoding should be set to embed as well.",
+    )
 
-args = parser.parse_args()
+    # Transformer.
+    parser.add_argument(
+        "--heads",
+        type=int,
+        default=0,
+        help="Transformer: num heads.  A non-zero value turns on Transformer"
+        " (otherwise MADE/ResMADE).",
+    )
+    parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
+    parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
+    parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
+    parser.add_argument(
+        "--transformer-act", type=str, default="gelu", help="Transformer activation."
+    )
+
+    # Ordering.
+    parser.add_argument("--num-orderings", type=int, default=1, help="Number of orderings.")
+    parser.add_argument(
+        "--order",
+        nargs="+",
+        type=int,
+        required=False,
+        help="Use a specific ordering.  "
+        "Format: e.g., [0 2 1] means variable 2 appears second.",
+    )
+    return parser
+
+
+args = create_parser().parse_args()
 
 
 def Entropy(name, data, bases=None):
@@ -281,6 +287,7 @@ def InvertOrder(order):
 
 
 def MakeMade(scale, cols_to_train, seed, fixed_ordering=None):
+    print("MakeMade - START")
     if args.inv_order:
         print("Inverting order!")
         fixed_ordering = InvertOrder(fixed_ordering)
@@ -303,6 +310,7 @@ def MakeMade(scale, cols_to_train, seed, fixed_ordering=None):
         column_masking=args.column_masking,
     ).to(DEVICE)
 
+    print("MakeMade - END")
     return model
 
 
@@ -334,18 +342,15 @@ def TrainTask(seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds_store_sales", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "census":
-        # reference = LoadData(root='data/', filename='main.csv', cols=None)
+    assert args.dataset in ALLOWED_DATASETS, "Unknown dataset: {}".format(args.dataset)
+    if args.dataset == "census":
         table = datasets.LoadCensus()
-    elif args.dataset == "tpcds_store_sales":
-        table = datasets.LoadMyDataset()
     elif args.dataset == "forest":
         table = datasets.LoadForest()
+    elif args.dataset == "bjaq":
+        table = datasets.LoadBJAQ()
+    elif args.dataset == "power":
+        table = datasets.LoadPower()
 
     table_bits = Entropy(
         table,
@@ -365,7 +370,7 @@ def TrainTask(seed=0):
             cols_to_train=table.columns, fixed_ordering=fixed_ordering, seed=seed
         )
     else:
-        if args.dataset in ["dmv-tiny", "dmv", "tpcds_store_sales", "census", "forest"]:
+        if args.dataset in ALLOWED_DATASETS:
             model = MakeMade(
                 scale=args.fc_hiddens,
                 cols_to_train=table.columns,

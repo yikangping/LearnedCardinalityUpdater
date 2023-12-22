@@ -307,6 +307,46 @@ def LoadPermutedForest(filename="forest.csv", permute=True):
     return common.CsvTable("census", data, cols=data.columns), landmarks
 
 
+def _read_npy_as_df(abs_file_path):
+    data = np.load(abs_file_path)
+
+    # Calculate the number of columns in the data
+    num_columns = data.shape[1]
+
+    # Generate column names based on the number of columns
+    column_names = [f'col-{i + 1}' for i in range(num_columns)]
+
+    # Create the DataFrame with the generated column names
+    df = pd.DataFrame(data, columns=column_names)
+    return df, column_names
+
+
+def _load_npy_dataset(file_name, table_name):
+    # 读取数据
+    file_path = "./FACE/data/{}".format(file_name)
+    abs_file_path = get_absolute_path(file_path)
+    df, cols = _read_npy_as_df(abs_file_path)
+
+    # 处理数据
+    df = df.dropna(axis=1, how="all")
+    df_obj = df.select_dtypes(["object"])
+    df[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
+    df.replace("", np.nan, inplace=True)
+    df.dropna(inplace=True)
+
+    print("load_npy_dataset - df.shape =", df.shape)
+
+    return common.CsvTable(table_name, df, cols)
+
+
+def LoadBJAQ():
+    return _load_npy_dataset(file_name="BJAQ.npy", table_name="bjaq")
+
+
+def LoadPower():
+    return _load_npy_dataset(file_name="power.npy", table_name="power")
+
+
 if __name__ == "__main__":
     # LoadPermutedCensus(permute=True)
     LoadPartlyPermutedCensus()
