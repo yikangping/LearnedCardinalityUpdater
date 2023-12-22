@@ -12,6 +12,8 @@ import nflows.nn as nn_
 import torch.nn as nn
 import torch.nn.functional as F
 
+from constants.dataset_constants import ALLOWED_DATASETS
+
 PROJECT_PATH = "../"
 GPU_ID = 1
 dataset_name = "BJAQ"
@@ -253,8 +255,9 @@ def JS_test(data, update_data, sample_size, epoch=32):
     return JS_diver
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="bjaq", help="Dataset.")
     parser.add_argument(
         "--run",
         help="running type (init, update, default: update)",
@@ -291,24 +294,37 @@ def main():
     assert (
         args.update_size >= args.sample_size
     ), "Error! Update Size Must Be Greater Than Sample Size!"
+    return args
 
+
+def main():
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cuda")
-    root_file = "./old_data/BJAQ.npy"
-    save_file = "BJAQ.npy"
+
+    # 提取参数
+    args = parse_args()
+    assert args.dataset in ALLOWED_DATASETS, "Unknown dataset: {}".format(args.dataset)
+    if args.dataset == "bjaq":
+        root_file = "./old_data/BJAQ.npy"
+        save_file = "BJAQ.npy"
+    elif args.dataset == "power":
+        root_file = "./old_data/power.npy"
+        save_file = "power.npy"
+    else:
+        return
 
     # print(bjaq.shape)
     flow = load_model(device)
 
     ini_data_size = args.init_size
-    update_size = args.update_size
-    sample_size = args.sample_size
     if args.run == "init":
-        bjaq = np.load(root_file)
-        ini_data = sampling(bjaq, ini_data_size, replace=False)
+        raw_data = np.load(root_file)
+        ini_data = sampling(raw_data, ini_data_size, replace=False)
         print(ini_data.shape)
         np.save(save_file, ini_data)
 
     elif args.run == "update":
+        update_size = args.update_size
+        sample_size = args.sample_size
         data = np.load(save_file).astype(np.float32)
         # data=np.load(root_file).astype(np.float32)
 
