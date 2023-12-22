@@ -28,5 +28,6 @@ pip install -r requirement.txt
 
 ## 安装其他依赖
 ```shell
+pip install nflows
 pip install jupyter
 ```

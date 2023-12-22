@@ -6,10 +6,12 @@ import numpy as np
 import common
 import pandas as pd
 
+from utils.path_util import get_absolute_path
+
 
 def LoadCensus(filename="census.csv", batch_num=None, finetune=False):
     csv_file = "./data/census/{}".format(filename)
-    # csv_file = "../data/census/permuted_dataset.csv"
+    csv_file = get_absolute_path(csv_file)
     cols = [
         "age",
         "workclass",
@@ -49,7 +51,7 @@ def LoadCensus(filename="census.csv", batch_num=None, finetune=False):
     # landmarks = int(len(df)*10/12) + np.linspace(0, int((len(df)*10/12)*0.2), 6, dtype=np.int)
     # df = df.iloc[:landmarks[5]]
 
-    print(df.shape)
+    print("Naru/datasets.py - LoadCensus", df.shape)
     return common.CsvTable("census", df, cols)
 
 
@@ -58,6 +60,7 @@ def LoadPermutedCensus(filename="census.csv", permute=True):
         csv_file = "./data/census/{}".format(filename)
     else:
         csv_file = "./data/census/permuted_dataset.csv"
+    csv_file = get_absolute_path(csv_file)
     cols = [
         "age",
         "workclass",
@@ -103,7 +106,9 @@ def LoadPermutedCensus(filename="census.csv", permute=True):
         update_sample = sorted_columns.sample(frac=0.2)
         data = pd.concat([df, update_sample])
         landmarks = len(df) + np.linspace(0, len(update_sample), 2, dtype=np.int32)
-        data.to_csv("./data/census/permuted_dataset.csv", sep=",", index=None)
+        save_path = get_absolute_path("./data/census/permuted_dataset.csv")
+        data.to_csv(save_path, sep=",", index=None)
+        print(f"{str(save_path)} Saved")
     else:
         # update_sample = df.sample(frac=0.2)
         data = df
@@ -127,6 +132,7 @@ def LoadPermutedCensus(filename="census.csv", permute=True):
 
 def LoadPartlyPermutedCensus(filename="census.csv", num_of_sorted_cols=1):
     csv_file = "../data/census/{}".format(filename)
+    csv_file = get_absolute_path(csv_file)
     cols = [
         "age",
         "workclass",
@@ -195,6 +201,7 @@ def LoadPartlyPermutedCensus(filename="census.csv", num_of_sorted_cols=1):
 def LoadForest(filename="forest.csv", batch_num=None, finetune=False):
     csv_file = "./data/forest/{}".format(filename)
     # csv_file = './permuted_dataset.csv'
+    csv_file = get_absolute_path(csv_file)
     cols = [
         "Elevation",
         "Aspect",
@@ -240,6 +247,7 @@ def LoadPermutedForest(filename="forest.csv", permute=True):
         csv_file = "./data/forest/{}".format(filename)
     else:
         csv_file = "./data/forest/permuted_dataset.csv"
+    csv_file = get_absolute_path(csv_file)
     cols = [
         "Elevation",
         "Aspect",

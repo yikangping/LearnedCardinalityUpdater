@@ -18,6 +18,9 @@ import glob
 import higher
 from torch.nn import functional as F, init
 
+from utils.path_util import get_absolute_path
+from utils.model_util import save_model
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device", DEVICE)
 
@@ -41,7 +44,7 @@ parser.add_argument(
     "--column-masking",
     action="store_true",
     help="Column masking training, which permits wildcard skipping"
-    " at querying time.",
+         " at querying time.",
 )
 
 # MADE.
@@ -53,10 +56,10 @@ parser.add_argument(
     "--inv-order",
     action="store_true",
     help="Set this flag iff using MADE and specifying --order. Flag --order "
-    "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
-    "MADE, however, is implemented to take in an argument the inverse "
-    "semantics (element i indicates the position of variable i).  Transformer"
-    " does not have this issue and thus should not have this flag on.",
+         "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
+         "MADE, however, is implemented to take in an argument the inverse "
+         "semantics (element i indicates the position of variable i).  Transformer"
+         " does not have this issue and thus should not have this flag on.",
 )
 parser.add_argument(
     "--input-encoding",
@@ -69,7 +72,7 @@ parser.add_argument(
     type=str,
     default="one_hot",
     help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
-    "then input encoding should be set to embed as well.",
+         "then input encoding should be set to embed as well.",
 )
 
 # Transformer.
@@ -78,7 +81,7 @@ parser.add_argument(
     type=int,
     default=0,
     help="Transformer: num heads.  A non-zero value turns on Transformer"
-    " (otherwise MADE/ResMADE).",
+         " (otherwise MADE/ResMADE).",
 )
 parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
 parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
@@ -95,7 +98,7 @@ parser.add_argument(
     type=int,
     required=False,
     help="Use a specific ordering.  "
-    "Format: e.g., [0 2 1] means variable 2 appears second.",
+         "Format: e.g., [0 2 1] means variable 2 appears second.",
 )
 
 args = parser.parse_args()
@@ -123,19 +126,19 @@ def KD_loss(pm_hat, nm_hat):
 
 
 def RunEpoch(
-    split,
-    model,
-    opt,
-    scheduler,
-    train_data,
-    val_data=None,
-    batch_size=100,
-    upto=None,
-    epoch_num=None,
-    verbose=False,
-    log_every=10,
-    return_losses=False,
-    table_bits=None,
+        split,
+        model,
+        opt,
+        scheduler,
+        train_data,
+        val_data=None,
+        batch_size=100,
+        upto=None,
+        epoch_num=None,
+        verbose=False,
+        log_every=10,
+        return_losses=False,
+        table_bits=None,
 ):
     torch.set_grad_enabled(split == "train")
     model.train() if split == "train" else model.eval()
@@ -162,8 +165,8 @@ def RunEpoch(
                     t = args.warmups
                     d_model = model.embed_size
                     global_steps = len(loader) * epoch_num + step + 1
-                    lr = (d_model**-0.5) * min(
-                        (global_steps**-0.5), global_steps * (t**-1.5)
+                    lr = (d_model ** -0.5) * min(
+                        (global_steps ** -0.5), global_steps * (t ** -1.5)
                     )
                     param_group["lr"] = lr
 
@@ -195,8 +198,8 @@ def RunEpoch(
             if mean:
                 xb = (xb * std) + mean
             loss = (
-                F.binary_cross_entropy_with_logits(xbhat, xb, size_average=False)
-                / xbhat.size()[0]
+                    F.binary_cross_entropy_with_logits(xbhat, xb, size_average=False)
+                    / xbhat.size()[0]
             )
             # loss = loss
         else:
@@ -275,22 +278,22 @@ def RunEpoch(
 
 
 def RunUpdateEpoch(
-    split,
-    model,
-    pmodel,
-    opt,
-    scheduler,
-    train_data,
-    transfer_data,
-    omega=0.0001,
-    val_data=None,
-    batch_size=100,
-    upto=None,
-    epoch_num=None,
-    verbose=False,
-    log_every=10,
-    return_losses=False,
-    table_bits=None,
+        split,
+        model,
+        pmodel,
+        opt,
+        scheduler,
+        train_data,
+        transfer_data,
+        omega=0.0001,
+        val_data=None,
+        batch_size=100,
+        upto=None,
+        epoch_num=None,
+        verbose=False,
+        log_every=10,
+        return_losses=False,
+        table_bits=None,
 ):
     torch.set_grad_enabled(split == "train")
     model.train() if split == "train" else model.eval()
@@ -451,29 +454,29 @@ def InnerForward(model, pmodel, omega, xb, trb):
     loss3 = model.kd_loss(trbhat, pmtrbhat)
 
     # loss = (1 - omega) * (loss3.mean() / 2 + loss2 / 2) + omega * loss1
-    loss = (1 - omega) * loss2  + omega * loss1
+    loss = (1 - omega) * loss2 + omega * loss1
 
     return loss
 
 
 def RunAdaptEpoch(
-    split,
-    model,
-    pmodel,
-    opt,
-    scheduler,
-    train_data,
-    transfer_data,
-    omega=0.0001,
-    val_data=None,
-    batch_size=100,
-    upto=None,
-    epoch_num=None,
-    verbose=False,
-    log_every=10,
-    return_losses=False,
-    table_bits=None,
-    task_num=4,
+        split,
+        model,
+        pmodel,
+        opt,
+        scheduler,
+        train_data,
+        transfer_data,
+        omega=0.0001,
+        val_data=None,
+        batch_size=100,
+        upto=None,
+        epoch_num=None,
+        verbose=False,
+        log_every=10,
+        return_losses=False,
+        table_bits=None,
+        task_num=4,
 ):
     torch.set_grad_enabled(split == "train")
     model.train() if split == "train" else model.eval()
@@ -509,9 +512,9 @@ def RunAdaptEpoch(
 
             inner_opt = torch.optim.Adam(model.parameters(), lr=1e-2)
             with higher.innerloop_ctx(
-                model,
-                inner_opt,
-                copy_initial_weights=False,
+                    model,
+                    inner_opt,
+                    copy_initial_weights=False,
             ) as (fmodel, diffopt):
                 for step, (trb, xb) in enumerate(zip(trloader, cycle(loader))):
                     xb = xb.to(DEVICE).to(torch.float32)
@@ -563,7 +566,7 @@ def RunAdaptEpoch(
 
                     losses.append(test_loss.item())
 
-                    if step1 % log_every == 0 and task==0:
+                    if step1 % log_every == 0 and task == 0:
                         if split == "train":
                             if epoch_num % 10 == 0:
                                 print(
@@ -604,21 +607,21 @@ def RunAdaptEpoch(
 
 
 def RunDistillEpoch(
-    split,
-    model,
-    pmodel,
-    opt,
-    scheduler,
-    transfer_data,
-    omega=0.001,
-    val_data=None,
-    batch_size=100,
-    upto=None,
-    epoch_num=None,
-    verbose=False,
-    log_every=10,
-    return_losses=False,
-    table_bits=None,
+        split,
+        model,
+        pmodel,
+        opt,
+        scheduler,
+        transfer_data,
+        omega=0.001,
+        val_data=None,
+        batch_size=100,
+        upto=None,
+        epoch_num=None,
+        verbose=False,
+        log_every=10,
+        return_losses=False,
+        table_bits=None,
 ):
     torch.set_grad_enabled(split == "train")
     model.train() if split == "train" else model.eval()
@@ -692,8 +695,8 @@ def RunDistillEpoch(
                 trb = (trb * std) + mean
 
             loss2 = (
-                F.binary_cross_entropy_with_logits(trbhat, trb, size_average=False)
-                / trbhat.size()[0]
+                    F.binary_cross_entropy_with_logits(trbhat, trb, size_average=False)
+                    / trbhat.size()[0]
             )
 
             loss3 = KD_loss(trbhat, pmtrbhat)
@@ -918,8 +921,8 @@ def AdaptTask(pre_model, seed=0):
         )
 
         train_data.tuples = train_data.tuples[
-            split_indices[update_step] : split_indices[update_step + 1]
-        ]
+                            split_indices[update_step]: split_indices[update_step + 1]
+                            ]
 
         print(
             "train data shape: {}, transfer data shape:{}".format(
@@ -954,12 +957,9 @@ def AdaptTask(pre_model, seed=0):
                 since_start = time.time() - train_start
                 print("time since start: {:.1f} secs".format(since_start))
 
-                torch.save(
-                    model.state_dict(),
-                    "Naru/checkpoints/update_batch_{}_epoch_{}.pt".format(
-                        update_step + 1, epoch
-                    ),
-                )
+                check_point_path = "./Naru/checkpoints/update_batch_{}_epoch_{}.pt".format(update_step + 1, epoch)
+                absolute_checkpoint_path = get_absolute_path(check_point_path)
+                torch.save(model.state_dict(), absolute_checkpoint_path)
             train_losses.append(mean_epoch_train_loss)
 
         print("Training done; evaluating likelihood on full data:")
@@ -1014,10 +1014,7 @@ def AdaptTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        os.makedirs(os.path.dirname(PATH), exist_ok=True)
-        torch.save(model.state_dict(), PATH)
-        print("Saved to:")
-        print(PATH)
+        save_model(model, PATH)
         pre_model = PATH
 
 
@@ -1137,7 +1134,7 @@ def TrainTask(seed=0):
 
     if fixed_ordering is None:
         if seed is not None:
-            PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
+            PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
                 args.dataset,
                 mb,
                 model.model_bits,
@@ -1147,7 +1144,7 @@ def TrainTask(seed=0):
                 seed,
             )
         else:
-            PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
+            PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
                 args.dataset,
                 mb,
                 model.model_bits,
@@ -1162,7 +1159,7 @@ def TrainTask(seed=0):
         if args.inv_order:
             annot = "-invOrder"
 
-        PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
+        PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
             args.dataset,
             mb,
             model.model_bits,
@@ -1173,10 +1170,7 @@ def TrainTask(seed=0):
             "_".join(map(str, fixed_ordering)),
             annot,
         )
-    os.makedirs(os.path.dirname(PATH), exist_ok=True)
-    torch.save(model.state_dict(), PATH)
-    print("Saved to:")
-    print(PATH)
+    save_model(model, PATH)
 
 
 def TransferDataPrepare(train_data, split_indices, update_step):
@@ -1187,7 +1181,7 @@ def TransferDataPrepare(train_data, split_indices, update_step):
 
     # 从更新数据切片中抽样数据放进迁移数据集
     for i in range(update_step):
-        tuples1 = train_data.tuples[split_indices[i] : split_indices[i + 1]]
+        tuples1 = train_data.tuples[split_indices[i]: split_indices[i + 1]]
         rndindices = torch.randperm(len(tuples1))[:500]
         transfer_data.tuples = torch.cat(
             [transfer_data.tuples, tuples1[rndindices]], dim=0
@@ -1295,8 +1289,8 @@ def UpdateTask(pre_model, seed=0):
         )
 
         train_data.tuples = train_data.tuples[
-            split_indices[update_step] : split_indices[update_step + 1]
-        ]
+                            split_indices[update_step]: split_indices[update_step + 1]
+                            ]
 
         print(
             "train data shape: {}, transfer data shape:{}".format(
@@ -1331,12 +1325,9 @@ def UpdateTask(pre_model, seed=0):
                 since_start = time.time() - train_start
                 print("time since start: {:.1f} secs".format(since_start))
 
-                torch.save(
-                    model.state_dict(),
-                    "Naru/checkpoints/update_batch_{}_epoch_{}.pt".format(
-                        update_step + 1, epoch
-                    ),
-                )
+                check_point_path = "./Naru/checkpoints/update_batch_{}_epoch_{}.pt".format(update_step + 1, epoch)
+                absolute_checkpoint_path = get_absolute_path(check_point_path)
+                torch.save(model.state_dict(), absolute_checkpoint_path)
             train_losses.append(mean_epoch_train_loss)
 
         print("Training done; evaluating likelihood on full data:")
@@ -1391,10 +1382,7 @@ def UpdateTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        os.makedirs(os.path.dirname(PATH), exist_ok=True)
-        torch.save(model.state_dict(), PATH)
-        print("Saved to:")
-        print(PATH)
+        save_model(model, PATH)
         pre_model = PATH
 
 
@@ -1477,8 +1465,8 @@ def FineTuneTask(pre_model, seed=0):
         train_data = common.TableDataset(table_main)
 
         train_data.tuples = train_data.tuples[
-            split_indices[update_step] : split_indices[update_step + 1]
-        ]
+                            split_indices[update_step]: split_indices[update_step + 1]
+                            ]
 
         train_losses = []
         train_start = time.time()
@@ -1565,10 +1553,7 @@ def FineTuneTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        os.makedirs(os.path.dirname(PATH), exist_ok=True)
-        torch.save(model.state_dict(), PATH)
-        print("Saved to:")
-        print(PATH)
+        save_model(model, PATH)
         pre_model = PATH
 
 
@@ -1722,7 +1707,7 @@ def DistillTask(pre_model, seed=0):
 
         if fixed_ordering is None:
             if seed is not None:
-                PATH = "models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
+                PATH = "./models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
                     str(update_step + 1).zfill(2),
                     args.dataset,
                     mb,
@@ -1733,7 +1718,7 @@ def DistillTask(pre_model, seed=0):
                     seed,
                 )
             else:
-                PATH = "models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
+                PATH = "./models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
                     str(update_step + 1).zfill(2),
                     args.dataset,
                     mb,
@@ -1749,7 +1734,7 @@ def DistillTask(pre_model, seed=0):
             if args.inv_order:
                 annot = "-invOrder"
 
-            PATH = "models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
+            PATH = "./models/{}distilled{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
                 str(update_step + 1).zfill(2),
                 args.dataset,
                 mb,
@@ -1761,10 +1746,7 @@ def DistillTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        os.makedirs(os.path.dirname(PATH), exist_ok=True)
-        torch.save(model.state_dict(), PATH)
-        print("Saved to:")
-        print(PATH)
+        save_model(model, PATH)
         pre_model = PATH
         os.sys.exit()
 
@@ -1879,7 +1861,7 @@ def BayesCardExp(pre_model=None, seed=0):
 
         if fixed_ordering is None:
             if seed is not None:
-                PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
+                PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}.pt".format(
                     args.dataset,
                     mb,
                     model.model_bits,
@@ -1889,7 +1871,7 @@ def BayesCardExp(pre_model=None, seed=0):
                     seed,
                 )
             else:
-                PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
+                PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-{}.pt".format(
                     args.dataset,
                     mb,
                     model.model_bits,
@@ -1904,7 +1886,7 @@ def BayesCardExp(pre_model=None, seed=0):
             if args.inv_order:
                 annot = "-invOrder"
 
-            PATH = "models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
+            PATH = "./models/00{}-{:.1f}MB-model{:.3f}-data{:.3f}-{}-{}epochs-seed{}-order{}{}.pt".format(
                 args.dataset,
                 mb,
                 model.model_bits,
@@ -1915,10 +1897,7 @@ def BayesCardExp(pre_model=None, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        os.makedirs(os.path.dirname(PATH), exist_ok=True)
-        torch.save(model.state_dict(), PATH)
-        print("Saved to:")
-        print(PATH)
+        save_model(model, PATH)
         pre_model = PATH
 
     if args.dataset in ["dmv-tiny", "dmv", "tpcds"]:
@@ -2070,9 +2049,9 @@ if __name__ == "__main__":
     # UpdateTask(
     #     pre_model="./models/census-38.5MB-model30.303-data15.573-made-resmade-hidden256_256_256_256_256-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-20epochs-seed0.pt"
     # )
-    model_paths = glob.glob(
-        "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-    )
+    relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+    absolute_model_paths = get_absolute_path(relative_model_paths)
+    model_paths = glob.glob(str(absolute_model_paths))
     for model_path in model_paths:
         AdaptTask(pre_model=model_path)
         UpdateTask(pre_model=model_path)

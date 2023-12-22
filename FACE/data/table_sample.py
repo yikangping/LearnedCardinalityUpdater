@@ -253,7 +253,7 @@ def JS_test(data, update_data, sample_size, epoch=32):
     return JS_diver
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--run",
@@ -327,3 +327,7 @@ if __name__ == "__main__":
         conca_and_save(save_file, data, update_data)
 
     # # print("data sample: {}".format(input[:5]))
+
+
+if __name__ == "__main__":
+    main()

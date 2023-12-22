@@ -19,6 +19,7 @@ import estimators as estimators_lib
 import made
 import transformer
 from sqlParser import Parser
+from utils.path_util import get_absolute_path, convert_path_to_linux_style
 
 # For inference speed.
 torch.backends.cudnn.deterministic = False
@@ -54,7 +55,7 @@ parser.add_argument(
     "--column-masking",
     action="store_true",
     help="Turn on wildcard skipping.  Requires checkpoints be trained with "
-    "column masking.",
+         "column masking.",
 )
 parser.add_argument("--order", nargs="+", type=int, help="Use a specific order?")
 
@@ -67,10 +68,10 @@ parser.add_argument(
     "--inv-order",
     action="store_true",
     help="Set this flag iff using MADE and specifying --order. Flag --order"
-    "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
-    "MADE, however, is implemented to take in an argument the inverse "
-    "semantics (element i indicates the position of variable i).  Transformer"
-    " does not have this issue and thus should not have this flag on.",
+         "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
+         "MADE, however, is implemented to take in an argument the inverse "
+         "semantics (element i indicates the position of variable i).  Transformer"
+         " does not have this issue and thus should not have this flag on.",
 )
 parser.add_argument(
     "--input-encoding",
@@ -83,7 +84,7 @@ parser.add_argument(
     type=str,
     default="one_hot",
     help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
-    "then input encoding should be set to embed as well.",
+         "then input encoding should be set to embed as well.",
 )
 
 # Transformer.
@@ -92,7 +93,7 @@ parser.add_argument(
     type=int,
     default=0,
     help="Transformer: num heads.  A non-zero value turns on Transformer"
-    " (otherwise MADE/ResMADE).",
+         " (otherwise MADE/ResMADE).",
 )
 parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
 parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
@@ -153,19 +154,19 @@ def Entropy(name, data, bases=None):
 
 
 def RunEpoch(
-    split,
-    model,
-    opt,
-    scheduler,
-    train_data,
-    val_data=None,
-    batch_size=100,
-    upto=None,
-    epoch_num=None,
-    verbose=False,
-    log_every=10,
-    return_losses=False,
-    table_bits=None,
+        split,
+        model,
+        opt,
+        scheduler,
+        train_data,
+        val_data=None,
+        batch_size=100,
+        upto=None,
+        epoch_num=None,
+        verbose=False,
+        log_every=10,
+        return_losses=False,
+        table_bits=None,
 ):
     torch.set_grad_enabled(split == "train")
     model.train() if split == "train" else model.eval()
@@ -287,7 +288,7 @@ def ErrorMetric(est_card, card):
 
 
 def SampleTupleThenRandom(
-    all_cols, num_filters, rng, table, return_col_idx=False, query_num=0
+        all_cols, num_filters, rng, table, return_col_idx=False, query_num=0
 ):
     s = table.data.iloc[rng.randint(0, table.cardinality)]
     vals = s.values
@@ -324,21 +325,21 @@ def SampleTupleThenRandom(
 
 
 def GenerateQuery(
-    all_cols,
-    rng,
-    table,
-    return_col_idx=False,
-    previous_queries=False,
-    i=0,
-    loaded_file=None,
-    query_num=0,
+        all_cols,
+        rng,
+        table,
+        return_col_idx=False,
+        previous_queries=False,
+        i=0,
+        loaded_file=None,
+        query_num=0,
 ):
     """Generate a random query."""
     if not previous_queries:
-        if args.dataset=="census":
+        if args.dataset == "census":
             num_filters = rng.randint(5, 12)
-        elif args.dataset=="forest":
-            num_filters=rng.randint(3, 9)
+        elif args.dataset == "forest":
+            num_filters = rng.randint(3, 9)
         cols, ops, vals = SampleTupleThenRandom(
             all_cols,
             num_filters,
@@ -347,8 +348,9 @@ def GenerateQuery(
             return_col_idx=return_col_idx,
             query_num=query_num,
         )
-
-        pq = open("./query/previous_queries.csv", "a+")
+        relative_path = "./query/previous_queries.csv"
+        absolute_path = get_absolute_path(relative_path)
+        pq = open(absolute_path, "a+")
         line = ""
         for i, c in enumerate(cols):
             line = line + c.name + "," + ops[i] + "," + str(vals[i]) + ","
@@ -487,7 +489,7 @@ def ReadLatestQueries(file, query_idx, generated_query):
 
 
 def Query(
-    estimators, do_print=True, oracle_card=None, query=None, table=None, oracle_est=None
+        estimators, do_print=True, oracle_card=None, query=None, table=None, oracle_est=None
 ):
     assert query is not None
     cols, ops, vals = query
@@ -523,22 +525,30 @@ def Query(
 def ReportEsts(estimators):
     v = -1
     for est in estimators:
-        print("{} \tmax: {:.4f}\t99th: {:.4f}\t95th: {:.4f}\tmedian: {:.4f}\tmean: {:.4f}".format(est.name, np.max(est.errs), np.quantile(est.errs, 0.99), np.quantile(est.errs, 0.95), np.quantile(est.errs, 0.5), np.mean(est.errs)))
+        print("{} \tmax: {:.4f}\t99th: {:.4f}\t95th: {:.4f}\tmedian: {:.4f}\tmean: {:.4f}".format(est.name,
+                                                                                                  np.max(est.errs),
+                                                                                                  np.quantile(est.errs,
+                                                                                                              0.99),
+                                                                                                  np.quantile(est.errs,
+                                                                                                              0.95),
+                                                                                                  np.quantile(est.errs,
+                                                                                                              0.5),
+                                                                                                  np.mean(est.errs)))
         v = max(v, np.max(est.errs))
     return v
 
 
 def RunN(
-    table,
-    cols,
-    estimators,
-    rng=None,
-    num=50,
-    query_loc="benchmark/alldata/00.sql",
-    log_every=50,
-    num_filters=2,
-    oracle_cards=None,
-    oracle_est=None,
+        table,
+        cols,
+        estimators,
+        rng=None,
+        num=50,
+        query_loc="benchmark/alldata/00.sql",
+        log_every=50,
+        num_filters=2,
+        oracle_cards=None,
+        oracle_est=None,
 ):
     if rng is None:
         rng = np.random.RandomState(1234)
@@ -593,12 +603,12 @@ def RunN(
 
 
 def RunNParallel(
-    estimator_factory,
-    parallelism=2,
-    rng=None,
-    num=20,
-    num_filters=11,
-    oracle_cards=None,
+        estimator_factory,
+        parallelism=2,
+        rng=None,
+        num=20,
+        num_filters=11,
+        oracle_cards=None,
 ):
     """RunN in parallel with Ray.  Useful for slow estimators e.g., BN."""
     import ray
@@ -796,9 +806,9 @@ def LoadOracleCardinalities():
 
 
 def Model_Eval():
-    all_ckpts = glob.glob(
-        "./models/*{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-    )
+    relative_model_paths = "./models/*{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+    absolute_model_paths = get_absolute_path(relative_model_paths)
+    all_ckpts = glob.glob(str(absolute_model_paths))
     if args.blacklist:
         all_ckpts = [ckpt for ckpt in all_ckpts if args.blacklist not in ckpt]
 
@@ -818,12 +828,10 @@ def Model_Eval():
 
     for s in selected_ckpts:
         if args.order is None:
-            z = re.match(
-                "./models/([\D]+)-.+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+).*.pt",
-                s,
-            )
+            reg_pattern = ".*/models/([\D]+)-.+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+).*.pt"
         else:
-            z = re.match(".+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+)-order.*.pt", s)
+            reg_pattern = ".+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+)-order.*.pt"
+        z = re.match(reg_pattern, convert_path_to_linux_style(s))
         assert z
         model_name = z.group(1)
         model_bits = float(z.group(2))
@@ -1266,7 +1274,7 @@ def ConceptDriftTest(seed=0):
 
 
 def test_for_drift(
-    pre_model, seed=0, bootstrap=1000, sample_size=500, data_type="permute"
+        pre_model, seed=0, bootstrap=1000, sample_size=500, data_type="permute"
 ):
     torch.manual_seed(0)
     np.random.seed(0)
@@ -1278,8 +1286,8 @@ def test_for_drift(
         t1 = time.time()
         train_data = common.TableDataset(table)
         train_data.tuples = train_data.tuples[
-            : int(train_data.size() * 10 / 12)
-        ]  # 去掉末尾的update数据
+                            : int(train_data.size() * 10 / 12)
+                            ]  # 去掉末尾的update数据
 
         avg_ll = []
         for i in range(simulations):
@@ -1314,8 +1322,8 @@ def test_for_drift(
         train_data = common.TableDataset(table)
 
         train_data.tuples = train_data.tuples[
-            int(len(train_data.tuples) * 10 / 12) :
-        ]  # 取出更新部分
+                            int(len(train_data.tuples) * 10 / 12):
+                            ]  # 取出更新部分
         idx = rndindices = torch.randperm(len(train_data.tuples))[:5000]
 
         sample = train_data.tuples[idx]
@@ -1426,12 +1434,14 @@ def test_for_drift(
 
 if __name__ == "__main__":
     assert args.eval_type in ["estimate", "drift"], "Wrong Eval_type: {}!".format(args.eval_type)
-    if args.eval_type=="estimate":
+
+    if args.eval_type == "estimate":
         Model_Eval()
-    elif args.eval_type=="drift":
-        model_paths = glob.glob(
-            "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-        )
+
+    if args.eval_type == "drift":
+        relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+        absolute_model_paths = get_absolute_path(relative_model_paths)
+        model_paths = glob.glob(str(absolute_model_paths))
         for model_path in model_paths:
             test_for_drift(
                 pre_model=model_path, data_type="raw"
@@ -1449,4 +1459,3 @@ if __name__ == "__main__":
     # test_for_drift(
     #     pre_model="../models/origin-census-22.5MB-model26.797-data14.989-200epochs-seed0.pt", data_type="raw"
     # )
-

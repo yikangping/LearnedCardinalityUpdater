@@ -1,6 +1,5 @@
 """Model training."""
 import argparse
-import os
 import time
 
 import numpy as np
@@ -12,6 +11,7 @@ import common
 import datasets
 import made
 import transformer
+from utils.model_util import save_model
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device", DEVICE)
@@ -484,11 +484,12 @@ def TrainTask(seed=0):
             "_".join(map(str, fixed_ordering)),
             annot,
         )
-    os.makedirs(os.path.dirname(PATH), exist_ok=True)
-    torch.save(model.state_dict(), PATH)
-    print("Saved to:")
-    print(PATH)
+    save_model(model, PATH)
+
+
+def main():
+    TrainTask()
 
 
 if __name__ == "__main__":
-    TrainTask()
+    main()
