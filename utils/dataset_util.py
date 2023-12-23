@@ -17,13 +17,13 @@ class DatasetLoader:
         arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
         if dataset == "census":
-            table = datasets.load_csv_dataset(dataset_name="census")
+            table = datasets.CsvDatasetLoader.load_csv_dataset(dataset_name="census")
         elif dataset == "forest":
-            table = datasets.load_csv_dataset(dataset_name="forest")
+            table = datasets.CsvDatasetLoader.load_csv_dataset(dataset_name="forest")
         elif dataset == "bjaq":
-            table = datasets.load_npy_dataset(dataset_name="BJAQ")
+            table = datasets.NpyDatasetLoader.load_npy_dataset(dataset_name="BJAQ")
         elif dataset == "power":
-            table = datasets.load_npy_dataset(dataset_name="power")
+            table = datasets.NpyDatasetLoader.load_npy_dataset(dataset_name="power")
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -44,13 +44,13 @@ class DatasetLoader:
         arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
         if dataset == "census":
-            table, split_indices = datasets.load_permuted_csv_dataset(dataset_name="census", permute=permute)
+            table, split_indices = datasets.CsvDatasetLoader.load_permuted_csv_dataset(dataset_name="census", permute=permute)
         elif dataset == "forest":
-            table, split_indices = datasets.load_permuted_csv_dataset(dataset_name="forest", permute=permute)
+            table, split_indices = datasets.CsvDatasetLoader.load_permuted_csv_dataset(dataset_name="forest", permute=permute)
         elif dataset == "bjaq":
-            table, split_indices = datasets.load_permuted_npy_dataset(dataset_name="BJAQ", permute=permute)
+            table, split_indices = datasets.NpyDatasetLoader.load_permuted_npy_dataset(dataset_name="BJAQ", permute=permute)
         elif dataset == "power":
-            table, split_indices = datasets.load_permuted_npy_dataset(dataset_name="power", permute=permute)
+            table, split_indices = datasets.NpyDatasetLoader.load_permuted_npy_dataset(dataset_name="power", permute=permute)
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -71,7 +71,31 @@ class DatasetLoader:
         arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
         if dataset == "census":
-            table = datasets.LoadPartlyPermutedCensus(num_of_sorted_cols=num_of_sorted_cols)
+            table = datasets.CsvDatasetLoader.LoadPartlyPermutedCensus(num_of_sorted_cols=num_of_sorted_cols)
+        else:
+            raise ValueError(f"Unknown dataset name \"{dataset}\"")
+
+        return table
+
+
+class DatasetConverter:
+    @staticmethod
+    def convert_from_csv_to_npy(dataset: str):
+        """
+        Converts the dataset.
+
+        Args:
+            dataset (str): The dataset to be converted.
+
+        Returns:
+            The converted dataset
+        """
+        arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
+
+        if dataset == "census":
+            table = datasets.convert_csv_dataset(dataset_name="census", output_format=output_format)
+        elif dataset == "forest":
+            table = datasets.convert_csv_dataset(dataset_name="forest", output_format=output_format)
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
