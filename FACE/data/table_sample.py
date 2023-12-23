@@ -309,38 +309,31 @@ def main():
     arg_util.validate_argument(arg_util.ArgType.DATASET, args.dataset)
     ini_data_size = args.init_size
 
-    if args.dataset == "census":
-        root_file = "./data/census/census.npy"
-        save_file = f"./data/census/census-sample{ini_data_size}.npy"
-    elif args.dataset == "forest":
-        root_file = "./data/forest/forest.npy"
-        save_file = f"./data/forest/forest-sample{ini_data_size}.npy"
-    elif args.dataset == "bjaq":
-        root_file = "./FACE/data/old_data/BJAQ.npy"
-        save_file = f"./data/BJAQ/BJAQ-sample{ini_data_size}.npy"
-    elif args.dataset == "power":
-        root_file = "./FACE/data/old_data/power.npy"
-        save_file = f"./data/power/power-sample{ini_data_size}.npy"
+    dataset = args.dataset
+    if dataset in ["census", "forest", "bjaq", "power"]:
+        raw_file_path = f"./data/{dataset}/{dataset}.npy"
+        sampled_file_path = f"./data/{dataset}/sampled/{dataset}-sample{ini_data_size}.npy"
     else:
         return
-    root_file = get_absolute_path(root_file)
-    save_file = get_absolute_path(save_file)
+    raw_file_path = get_absolute_path(raw_file_path)
+    sampled_file_path = get_absolute_path(sampled_file_path)
 
     flow = load_model(device)
 
     # 为原始数据集创建子集
     if args.run == "init":
-        raw_data = np.load(root_file, allow_pickle=True)
+        raw_data = np.load(raw_file_path, allow_pickle=True)
         ini_data = sampling(raw_data, ini_data_size, replace=False)
         print(ini_data.shape)
-        np.save(save_file, ini_data)
-        print(save_file, "saved")
+        os.makedirs(os.path.dirname(sampled_file_path), exist_ok=True)
+        np.save(sampled_file_path, ini_data)
+        print(sampled_file_path, "saved")
 
     # 抽取增量更新数据，更新数据集，并进行数据漂移判定，输出mean reduction、2*std、Mean JS divergence三个参数
     if args.run == "update":
         update_size = args.update_size
         sample_size = args.sample_size
-        data = np.load(save_file).astype(np.float32)
+        data = np.load(sampled_file_path).astype(np.float32)
         # data=np.load(root_file).astype(np.float32)
 
         if args.update == "permute":
@@ -355,7 +348,7 @@ def main():
         mean_reduction, threshold = loss_test(data, update_data, sample_size)
         # print("sample dtype: {}".format(old_sample.dtype))
         JS_diver = JS_test(data, update_data, sample_size)
-        conca_and_save(save_file, data, update_data)
+        conca_and_save(sampled_file_path, data, update_data)
 
     # # print("data sample: {}".format(input[:5]))
 

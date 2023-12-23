@@ -234,9 +234,9 @@ class NpyDatasetLoader:
         return df, column_names
 
     @staticmethod
-    def load_npy_dataset(dataset_name: str, dir_path: str = "./FACE/data"):
+    def load_npy_dataset(dataset_name: str):
         # 读取数据
-        abs_file_path = get_absolute_path(f"{dir_path}/{dataset_name}.npy")
+        abs_file_path = get_absolute_path(f"./data/{dataset_name}/{dataset_name}.npy")
         df, cols = NpyDatasetLoader._load_npy_as_df(abs_file_path)
 
         # 处理数据
@@ -249,7 +249,7 @@ class NpyDatasetLoader:
     @staticmethod
     def load_permuted_npy_dataset(dataset_name: str, permute=True):
         # 读取数据
-        npy_file_path = f"./FACE/data/{dataset_name}.npy"
+        npy_file_path = f"./data/{dataset_name}/{dataset_name}.npy"
         permuted_csv_file_path = f"./data/{dataset_name}/permuted_dataset.csv"
         if permute:
             # 读取原始npy文件
@@ -282,14 +282,10 @@ class DatasetLoader:
         """
         arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
-        if dataset == "census":
-            table = CsvDatasetLoader.load_csv_dataset(dataset_name="census")
-        elif dataset == "forest":
-            table = CsvDatasetLoader.load_csv_dataset(dataset_name="forest")
-        elif dataset == "bjaq":
-            table = NpyDatasetLoader.load_npy_dataset(dataset_name="BJAQ")
-        elif dataset == "power":
-            table = NpyDatasetLoader.load_npy_dataset(dataset_name="power")
+        if dataset in ["census", "forest"]:
+            table = CsvDatasetLoader.load_csv_dataset(dataset_name=dataset)
+        elif dataset in ["bjaq", "power"]:
+            table = NpyDatasetLoader.load_npy_dataset(dataset_name=dataset)
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -309,14 +305,10 @@ class DatasetLoader:
         """
         arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
-        if dataset == "census":
-            table, split_indices = CsvDatasetLoader.load_permuted_csv_dataset(dataset_name="census", permute=permute)
-        elif dataset == "forest":
-            table, split_indices = CsvDatasetLoader.load_permuted_csv_dataset(dataset_name="forest", permute=permute)
-        elif dataset == "bjaq":
-            table, split_indices = NpyDatasetLoader.load_permuted_npy_dataset(dataset_name="BJAQ", permute=permute)
-        elif dataset == "power":
-            table, split_indices = NpyDatasetLoader.load_permuted_npy_dataset(dataset_name="power", permute=permute)
+        if dataset in ["census", "forest"]:
+            table, split_indices = CsvDatasetLoader.load_permuted_csv_dataset(dataset_name=dataset, permute=permute)
+        elif dataset in ["bjaq", "power"]:
+            table, split_indices = NpyDatasetLoader.load_permuted_npy_dataset(dataset_name=dataset, permute=permute)
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -377,5 +369,5 @@ if __name__ == "__main__":
     dataset = "census"
     dir_path = f"./data/{dataset}"
     DatasetConverter.convert_csv_into_npy(dataset_name=dataset)
-    NpyDatasetLoader.load_npy_dataset(dataset_name=dataset, dir_path=dir_path)
+    NpyDatasetLoader.load_npy_dataset(dataset_name=dataset)
     pass
