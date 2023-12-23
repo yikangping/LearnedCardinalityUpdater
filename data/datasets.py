@@ -413,6 +413,4 @@ def LoadPermutedPower(permute=True):
 
 
 if __name__ == "__main__":
-    # LoadPermutedCensus(permute=True)
-    # LoadPartlyPermutedCensus()
     pass
