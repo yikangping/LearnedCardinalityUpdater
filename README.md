@@ -4,7 +4,7 @@
 
 本课题的主要内容是在数据库查询优化器中的基数估计问题背景中，针对现有的机器学习模型的“静态”问题，面向数据库数据发生更新的场景，设计准确、高效的模型更新算法。
 
-#### 什么是基数估计问题？
+### 什么是基数估计问题？
 
 $$
 给定数据库D，和查询Q，估计查询结果R_D(Q)的大小|R_D(Q)|
@@ -14,10 +14,12 @@ $$
 
 注：数据库查询优化器（query optimizer）的相关知识，以及基数估计器（cardinality estimator）在查询优化器中起到的作用，感兴趣可自行查阅
 
-#### 本课题想要解决什么问题场景？
+### 本课题想要解决什么问题场景？
 
 $$
-假定有数据库\mathbb{D}，包含k张表\{T_1, T_2, …, T_k\}，每张表包含m个属性\{A_1^t,A_2^t,…,A_m^t\}。\\假设有一个工作负载\mathbb{W}，包含若干SQL语句以及数据更新语句(INSERT/DELETE/UPDATE)，\\其中一条标准的SQL语句定义如下：\\
+假定有数据库\mathbb{D}，包含k张表\{T_1, T_2, …, T_k\}，每张表包含m个属性\{A_1^t,A_2^t,…,A_m^t\}。
+假设有一个工作负载\mathbb{W}，包含若干SQL语句以及数据更新语句(INSERT/DELETE/UPDATE)，
+其中一条标准的SQL语句定义如下：\\
 SELECT\ *\ FROM\ T_1 \Join T_2 \Join T_3 \dots\Join T_n\ WHERE\ F_1\ AND \dots\ AND\ F_d.
 $$
 
@@ -25,7 +27,7 @@ $$
 
 目标：1）最小化SQL语句的基数估计误差；2）自动识别数据漂移（data drifts）并进行自适应更新
 
-#### 关键技术问题
+### 关键技术问题
 
 - 数据漂移的自适应识别：如何在数据库进行数据更新之后，准确识别数据漂移
 - 模型的高效更新：如何基于更新后的数据，实现模型的增量更新，用尽量小的训练开销，实现更好的训练效果
@@ -37,9 +39,16 @@ $$
 - data drifts detection：基于Face[1]实现，在FACE目录下测试运行
 - model update：基于DDUp[2]实现，在Naru目录下测试运行
 
-#### 如何运行？
+### 项目上手
+#### 环境配置
+详见[take-over.md](./README/take-over.md)
 
-- model update：
+#### 数据集基本信息
+详见[datasets.md](./README/introduction/datasets.md)
+
+### 如何运行？
+
+#### model update
 
 ```shell
 cd ./LearnedCardinalityUpdater
@@ -64,7 +73,7 @@ python Naru/incremental_train.py --dataset census --epoch 30
 python Naru/eval_model.py --dataset census
 ```
 
-- data drifts detection：
+#### data drifts detection
 
 ```shell
 cd ./LearnedCardinalityUpdater/FACE
@@ -94,7 +103,7 @@ python table_sample.py --run update --update_type sample --update_size 20000 --s
 
 ```
 
-## TBD
+## TODOs
 
 - 功能实现：
   - 4个数据集采用同样的存储格式，但是数据漂移检测和模型更新两部分分别只能良好支持1个数据集，对于每个部分新增对于其他数据集的支持
@@ -108,5 +117,7 @@ python table_sample.py --run update --update_type sample --update_size 20000 --s
 ## 参考文献
 
 [1] Wang J, Chai C, Liu J, et al. FACE: A normalizing flow based cardinality estimator[J]. Proceedings of the VLDB Endowment, 2021, 15(1): 72-84.
+- 论文下载：http://dbgroup.cs.tsinghua.edu.cn/ligl/papers/vldb22-flow-card.pdf
 
 [2] Kurmanji M, Triantafillou P. Detect, Distill and Update: Learned DB Systems Facing Out of Distribution Data[J]. Proceedings of the ACM on Management of Data, 2023, 1(1): 1-27.
+- 论文下载：https://arxiv.org/abs/2210.05508
