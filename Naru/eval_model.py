@@ -334,6 +334,12 @@ def GenerateQuery(
             num_filters = rng.randint(5, 12)
         elif args.dataset == "forest":
             num_filters = rng.randint(3, 9)
+        elif args.dataset == "bjaq":
+            num_filters = rng.randint(2, 5)  # TODO: 设置更合理的值
+        elif args.dataset == "power":
+            num_filters = rng.randint(2, 6)  # TODO: 设置更合理的值
+        else:
+            return
         cols, ops, vals = SampleTupleThenRandom(
             all_cols,
             num_filters,
@@ -842,15 +848,12 @@ def Model_Eval():
                 cols_to_train=table.columns, fixed_ordering=order, seed=seed
             )
         else:
-            if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-                model = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=order,
-                )
-            else:
-                assert False, args.dataset
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=order,
+            )
 
         assert order is None or len(order) == model.nin, order
         # ReportModel(model)
