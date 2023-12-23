@@ -1,11 +1,11 @@
 # 数据集总览
-共有4个数据集，其中：
-- Naru里面2个
+共有4个数据集，相关信息如下：
+- Naru里面2个（源格式为csv）
   - census
   - forest
-- FACE里面2个
-  - BJAQ
-  - power
+- FACE里面2个（源格式为npy）
+  - BJAQ: 共5列，distribution较小
+  - power: 共6列，distribution极大，训练很慢
 
 # 数据集格式
 数据集都是npy文件，处理方式一致
