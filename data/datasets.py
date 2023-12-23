@@ -1,11 +1,9 @@
 """Dataset registrations."""
-import os
 
 import numpy as np
-
-import common
 import pandas as pd
 
+import Naru.common as common
 from utils.path_util import get_absolute_path
 
 
@@ -416,4 +414,5 @@ def LoadPermutedPower(permute=True):
 
 if __name__ == "__main__":
     # LoadPermutedCensus(permute=True)
-    LoadPartlyPermutedCensus()
+    # LoadPartlyPermutedCensus()
+    pass

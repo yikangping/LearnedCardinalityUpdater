@@ -12,12 +12,11 @@ import pandas as pd
 import torch
 
 import common
-import datasets
 import estimators as estimators_lib
 import made
 import transformer
-from constants.dataset_constants import validate_dataset
 from constants.evaluation_constants import validate_eval_type
+from data import dataset_util
 from sqlParser import Parser
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
 from utils.torch_util import get_torch_device
@@ -263,18 +262,8 @@ def InvertOrder(order):
 
 
 def MakeTable(step=None):
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        # table = datasets.LoadCensus()
-        table, _ = datasets.LoadPermutedCensus(permute=False)
-    elif args.dataset == "forest":
-        table, _ = datasets.LoadPermutedForest(permute=False)
+    # Load dataset
+    table, _ = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     oracle_est = estimators_lib.Oracle(table)
     if args.run_bn:
@@ -1102,17 +1091,8 @@ def LLTest(modelspath, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        table = datasets.LoadCensus()
-    elif args.dataset == "forest":
-        table = datasets.LoadForest()
+    # Load dataset
+    table = dataset_util.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1206,15 +1186,7 @@ def ConceptDriftTest(seed=0):
 
     results = {}
     for i in range(0, 10):
-        assert args.dataset in ["dmv", "tpcds", "census", "forest"]
-        if args.dataset == "dmv":
-            table = datasets.LoadPartlyPermutedDmv(num_of_sorted_cols=i)
-        elif args.dataset == "tpcds":
-            table = datasets.LoadSingleFile()
-        elif args.dataset == "census":
-            table = datasets.LoadPartlyPermutedCensus(num_of_sorted_cols=i)
-        elif args.dataset == "forest":
-            table = datasets.LoadPartlyPermutedForest(num_of_sorted_cols=i)
+        table = dataset_util.load_partly_permuted_dataset(dataset=args.dataset, num_of_sorted_cols=i)
 
         table_bits = Entropy(
             table,
@@ -1379,18 +1351,9 @@ def test_for_drift(
         else:
             return "no-drift", t2 - t1
 
-    validate_dataset(args.dataset)  # 检查dataset是否合法
+    # Load data
     is_raw: bool = data_type == "raw"
-    if args.dataset == "census":
-        table, split = datasets.LoadPermutedCensus(permute=is_raw)
-    elif args.dataset == "forest":
-        table, split = datasets.LoadPermutedForest(permute=is_raw)
-    elif args.dataset == "bjaq":
-        table, split = datasets.LoadPermutedBJAQ(permute=is_raw)
-    elif args.dataset == "power":
-        table, split = datasets.LoadPermutedPower(permute=is_raw)
-    else:
-        return
+    table, split = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=is_raw)
 
     table_bits = Entropy(
         table,

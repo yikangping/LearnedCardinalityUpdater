@@ -8,10 +8,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import common
-import datasets
 import made
 import transformer
-from constants.dataset_constants import validate_dataset
+from data import dataset_util
 from utils.model_util import save_model
 from utils.torch_util import get_torch_device
 
@@ -341,17 +340,8 @@ def TrainTask(seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    validate_dataset(args.dataset)  # Validate dataset name
-    if args.dataset == "census":
-        table = datasets.LoadCensus()
-    elif args.dataset == "forest":
-        table = datasets.LoadForest()
-    elif args.dataset == "bjaq":
-        table = datasets.LoadBJAQ()
-    elif args.dataset == "power":
-        table = datasets.LoadPower()
-    else:
-        return
+    # Load dataset
+    table = dataset_util.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,

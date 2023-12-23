@@ -1,107 +1,110 @@
 """Model training."""
 import argparse
+import copy
+import glob
 import os
 import time
-import copy
-import math
 from itertools import cycle
 
+import higher
 import numpy as np
-import random
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
+
 import common
-import datasets
 import made
 import transformer
-import glob
-import higher
-from torch.nn import functional as F, init
-
-from utils.path_util import get_absolute_path
+from data import dataset_util
 from utils.model_util import save_model
+from utils.path_util import get_absolute_path
+from utils.torch_util import get_torch_device
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print("Device", DEVICE)
 
-parser = argparse.ArgumentParser()
+DEVICE = get_torch_device()
 
-# Training.
-parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
-parser.add_argument("--num-gpus", type=int, default=0, help="#gpus.")
-parser.add_argument("--bs", type=int, default=1024, help="Batch size.")
-parser.add_argument(
-    "--warmups",
-    type=int,
-    default=0,
-    help="Learning rate warmup steps.  Crucial for Transformer.",
-)
-parser.add_argument(
-    "--epochs", type=int, default=20, help="Number of epochs to train for."
-)
-parser.add_argument("--constant-lr", type=float, default=None, help="Constant LR?")
-parser.add_argument(
-    "--column-masking",
-    action="store_true",
-    help="Column masking training, which permits wildcard skipping"
-         " at querying time.",
-)
 
-# MADE.
-parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
-parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
-parser.add_argument("--residual", action="store_true", help="ResMade?")
-parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
-parser.add_argument(
-    "--inv-order",
-    action="store_true",
-    help="Set this flag iff using MADE and specifying --order. Flag --order "
-         "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
-         "MADE, however, is implemented to take in an argument the inverse "
-         "semantics (element i indicates the position of variable i).  Transformer"
-         " does not have this issue and thus should not have this flag on.",
-)
-parser.add_argument(
-    "--input-encoding",
-    type=str,
-    default="binary",
-    help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
-)
-parser.add_argument(
-    "--output-encoding",
-    type=str,
-    default="one_hot",
-    help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
-         "then input encoding should be set to embed as well.",
-)
+def create_parser():
+    parser = argparse.ArgumentParser()
 
-# Transformer.
-parser.add_argument(
-    "--heads",
-    type=int,
-    default=0,
-    help="Transformer: num heads.  A non-zero value turns on Transformer"
-         " (otherwise MADE/ResMADE).",
-)
-parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
-parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
-parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
-parser.add_argument(
-    "--transformer-act", type=str, default="gelu", help="Transformer activation."
-)
+    # Training.
+    parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
+    parser.add_argument("--num-gpus", type=int, default=0, help="#gpus.")
+    parser.add_argument("--bs", type=int, default=1024, help="Batch size.")
+    parser.add_argument(
+        "--warmups",
+        type=int,
+        default=0,
+        help="Learning rate warmup steps.  Crucial for Transformer.",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=20, help="Number of epochs to train for."
+    )
+    parser.add_argument("--constant-lr", type=float, default=None, help="Constant LR?")
+    parser.add_argument(
+        "--column-masking",
+        action="store_true",
+        help="Column masking training, which permits wildcard skipping"
+             " at querying time.",
+    )
 
-# Ordering.
-parser.add_argument("--num-orderings", type=int, default=1, help="Number of orderings.")
-parser.add_argument(
-    "--order",
-    nargs="+",
-    type=int,
-    required=False,
-    help="Use a specific ordering.  "
-         "Format: e.g., [0 2 1] means variable 2 appears second.",
-)
+    # MADE.
+    parser.add_argument("--fc-hiddens", type=int, default=256, help="Hidden units in FC.")
+    parser.add_argument("--layers", type=int, default=4, help="# layers in FC.")
+    parser.add_argument("--residual", action="store_true", help="ResMade?")
+    parser.add_argument("--direct-io", action="store_true", help="Do direct IO?")
+    parser.add_argument(
+        "--inv-order",
+        action="store_true",
+        help="Set this flag iff using MADE and specifying --order. Flag --order "
+             "lists natural indices, e.g., [0 2 1] means variable 2 appears second."
+             "MADE, however, is implemented to take in an argument the inverse "
+             "semantics (element i indicates the position of variable i).  Transformer"
+             " does not have this issue and thus should not have this flag on.",
+    )
+    parser.add_argument(
+        "--input-encoding",
+        type=str,
+        default="binary",
+        help="Input encoding for MADE/ResMADE, {binary, one_hot, embed}.",
+    )
+    parser.add_argument(
+        "--output-encoding",
+        type=str,
+        default="one_hot",
+        help="Iutput encoding for MADE/ResMADE, {one_hot, embed}.  If embed, "
+             "then input encoding should be set to embed as well.",
+    )
 
-args = parser.parse_args()
+    # Transformer.
+    parser.add_argument(
+        "--heads",
+        type=int,
+        default=0,
+        help="Transformer: num heads.  A non-zero value turns on Transformer"
+             " (otherwise MADE/ResMADE).",
+    )
+    parser.add_argument("--blocks", type=int, default=2, help="Transformer: num blocks.")
+    parser.add_argument("--dmodel", type=int, default=32, help="Transformer: d_model.")
+    parser.add_argument("--dff", type=int, default=128, help="Transformer: d_ff.")
+    parser.add_argument(
+        "--transformer-act", type=str, default="gelu", help="Transformer activation."
+    )
+
+    # Ordering.
+    parser.add_argument("--num-orderings", type=int, default=1, help="Number of orderings.")
+    parser.add_argument(
+        "--order",
+        nargs="+",
+        type=int,
+        required=False,
+        help="Use a specific ordering.  "
+             "Format: e.g., [0 2 1] means variable 2 appears second.",
+    )
+    return parser
+
+
+args = create_parser().parse_args()
 
 
 def Entropy(name, data, bases=None):
@@ -828,17 +831,8 @@ def AdaptTask(pre_model, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table, split_indices = datasets.LoadPermutedDmv()
-    elif args.dataset == "tpcds":
-        table, split_indices = datasets.LoadPermutedDataset()
-    elif args.dataset == "census":
-        table, split_indices = datasets.LoadPermutedCensus(permute=False)
-    elif args.dataset == "forest":
-        table, split_indices = datasets.LoadPermutedForest(permute=False)
+    # Load data
+    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -872,24 +866,21 @@ def AdaptTask(pre_model, seed=0):
             pmodel.load_state_dict(torch.load(pre_model))
             pmodel.eval()
         else:
-            if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-                model = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel.load_state_dict(torch.load(pre_model))
-                pmodel.eval()
-                model.load_state_dict(torch.load(pre_model))
-            else:
-                assert False, args.dataset
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel.load_state_dict(torch.load(pre_model))
+            pmodel.eval()
+            model.load_state_dict(torch.load(pre_model))
 
         mb = ReportModel(model)
 
@@ -1022,17 +1013,8 @@ def TrainTask(seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        table = datasets.LoadCensus()
-    elif args.dataset == "forest":
-        table = datasets.LoadForest()
+    # Load dataset
+    table = dataset_util.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1054,15 +1036,12 @@ def TrainTask(seed=0):
             cols_to_train=table.columns, fixed_ordering=fixed_ordering, seed=seed
         )
     else:
-        if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-            model = MakeMade(
-                scale=args.fc_hiddens,
-                cols_to_train=table.columns,
-                seed=seed,
-                fixed_ordering=fixed_ordering,
-            )
-        else:
-            assert False, args.dataset
+        model = MakeMade(
+            scale=args.fc_hiddens,
+            cols_to_train=table.columns,
+            seed=seed,
+            fixed_ordering=fixed_ordering,
+        )
 
     mb = ReportModel(model)
 
@@ -1194,17 +1173,8 @@ def UpdateTask(pre_model, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table, split_indices = datasets.LoadPermutedDmv()
-    elif args.dataset == "tpcds":
-        table, split_indices = datasets.LoadPermutedDataset()
-    elif args.dataset == "census":
-        table, split_indices = datasets.LoadPermutedCensus(permute=False)
-    elif args.dataset == "forest":
-        table, split_indices = datasets.LoadPermutedForest(permute=False)
+    # Load dataset
+    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -1240,24 +1210,21 @@ def UpdateTask(pre_model, seed=0):
             pmodel.load_state_dict(torch.load(pre_model))
             pmodel.eval()
         else:
-            if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-                model = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel.load_state_dict(torch.load(pre_model))
-                model.load_state_dict(torch.load(pre_model))
-                pmodel.eval()
-            else:
-                assert False, args.dataset
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel.load_state_dict(torch.load(pre_model))
+            model.load_state_dict(torch.load(pre_model))
+            pmodel.eval()
 
         mb = ReportModel(model)
 
@@ -1390,17 +1357,8 @@ def FineTuneTask(pre_model, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table, split_indices = datasets.LoadPermutedDataset()
-    elif args.dataset == "census":
-        table, split_indices = datasets.LoadPermutedCensus(permute=False)
-    elif args.dataset == "forest":
-        table, split_indices = datasets.LoadPermutedForest(permute=False)
+    # Load dataset
+    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -1431,17 +1389,14 @@ def FineTuneTask(pre_model, seed=0):
             model.load_state_dict(torch.load(pre_model))
             model.train()
         else:
-            if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-                model = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                model.load_state_dict(torch.load(pre_model))
-                model.train()
-            else:
-                assert False, args.dataset
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            model.load_state_dict(torch.load(pre_model))
+            model.train()
 
         mb = ReportModel(model)
 
@@ -1561,17 +1516,8 @@ def DistillTask(pre_model, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        table = datasets.LoadCensus()
-    elif args.dataset == "forest":
-        table = datasets.LoadForest()
+    # Load dataset
+    table = dataset_util.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1606,25 +1552,22 @@ def DistillTask(pre_model, seed=0):
             pmodel.load_state_dict(torch.load(pre_model))
             pmodel.eval()
         else:
-            if args.dataset in ["dmv-tiny", "dmv", "tpcds", "census", "forest"]:
-                model = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel = MakeMade(
-                    scale=args.fc_hiddens,
-                    cols_to_train=table.columns,
-                    seed=seed,
-                    fixed_ordering=fixed_ordering,
-                )
-                pmodel.load_state_dict(torch.load(pre_model))
-                model.load_state_dict(torch.load(pre_model))
-                pmodel.eval()
-                model.train()
-            else:
-                assert False, args.dataset
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
+            pmodel.load_state_dict(torch.load(pre_model))
+            model.load_state_dict(torch.load(pre_model))
+            pmodel.eval()
+            model.train()
 
         mb = ReportModel(model)
 
@@ -1755,15 +1698,8 @@ def BayesCardExp(pre_model=None, seed=0):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    assert args.dataset in ["dmv-tiny", "dmv", "tpcds", "census"]
-    if args.dataset == "dmv-tiny":
-        table = datasets.LoadDmv("dmv-tiny.csv")
-    elif args.dataset == "dmv":
-        table = datasets.LoadDmv()
-    elif args.dataset == "tpcds":
-        table = datasets.LoadSingleFile()
-    elif args.dataset == "census":
-        table, split_indices = datasets.LoadPermutedCensus()
+    # Load dataset
+    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -2043,7 +1979,7 @@ def BayesCardExp(pre_model=None, seed=0):
     pre_model = PATH
 
 
-if __name__ == "__main__":
+def main():
     # TrainTask()
     # BayesCardExp(pre_model="models/00tpcds-12.9MB-model10.410-data13.514-made-resmade-hidden128_128_128_128-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-10epochs-seed0.pt")
     # UpdateTask(
@@ -2065,3 +2001,7 @@ if __name__ == "__main__":
     #     UpdateTask(pre_model=forest_path)
     #     FineTuneTask(pre_model=forest_path)
     # DistillTask(pre_model='models/00forest-23.7MB-model59.664-data19.148-made-resmade-hidden256_256_256_256_256-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-20epochs-seed0.pt')
+
+
+if __name__ == "__main__":
+    main()
