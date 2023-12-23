@@ -9,11 +9,31 @@ from utils.path_util import get_absolute_path
 class DatasetLoaderUtils:
     @staticmethod
     def clean_df(df: pd.DataFrame) -> pd.DataFrame:
+        # 删除所有值均为缺失值的列
         df = df.dropna(axis=1, how="all")
+
+        # 选择数据类型为 'object' 的列（通常是字符串）
         df_obj = df.select_dtypes(["object"])
-        df[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
+
+        # 遍历这些列，尝试将其转换为更合适的数据类型（整数或浮点数）
+        for col in df_obj.columns:
+            # 尝试转换为整数
+            try:
+                df[col] = pd.to_numeric(df[col], downcast='integer')
+            except ValueError:
+                # 如果转换整数失败，尝试转换为浮点数
+                try:
+                    df[col] = pd.to_numeric(df[col], downcast='float')
+                except ValueError:
+                    # 如果还是失败，说明确实是字符串，去除首尾的空白字符
+                    df[col] = df[col].str.strip()
+
+        # 将空字符串替换为缺失值
         df.replace("", np.nan, inplace=True)
+
+        # 删除含有任何缺失值的行
         df.dropna(inplace=True)
+
         return df
 
     @staticmethod
@@ -200,8 +220,8 @@ class CsvDatasetLoader:
 
 class NpyDatasetLoader:
     @staticmethod
-    def _load_npy_as_df(abs_file_path):
-        data = np.load(abs_file_path)
+    def _load_npy_as_df(abs_npy_file_path):
+        data: np.ndarray = np.load(abs_npy_file_path, allow_pickle=True)
 
         # Calculate the number of columns in the data
         num_columns = data.shape[1]
@@ -214,10 +234,9 @@ class NpyDatasetLoader:
         return df, column_names
 
     @staticmethod
-    def load_npy_dataset(dataset_name: str):
+    def load_npy_dataset(dataset_name: str, dir_path: str = "./FACE/data"):
         # 读取数据
-        file_path = f"./FACE/data/{dataset_name}.npy"
-        abs_file_path = get_absolute_path(file_path)
+        abs_file_path = get_absolute_path(f"{dir_path}/{dataset_name}.npy")
         df, cols = NpyDatasetLoader._load_npy_as_df(abs_file_path)
 
         # 处理数据
@@ -327,23 +346,36 @@ class DatasetLoader:
 
 class DatasetConverter:
     @staticmethod
-    def convert_from_csv_to_npy(dataset: str):
+    def convert_csv_into_npy(dataset_name: str):
         """
-        Converts the dataset.
+        Converts the format of dataset file from csv to npy.
 
         Args:
-            dataset (str): The dataset to be converted.
-
-        Returns:
-            The converted dataset
+            dataset_name (str): The dataset to be converted.
         """
-        arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
+        arg_util.validate_argument(arg_util.ArgType.DATASET, dataset_name)
 
-        if dataset == "census":
-            table = convert_csv_dataset(dataset_name="census", output_format=output_format)
-        elif dataset == "forest":
-            table = convert_csv_dataset(dataset_name="forest", output_format=output_format)
-        else:
-            raise ValueError(f"Unknown dataset name \"{dataset}\"")
+        # 读取数据
+        csv_file_path = f"./data/{dataset_name}/{dataset_name}.csv"
+        abs_csv_file_path = get_absolute_path(csv_file_path)
+        df = pd.read_csv(abs_csv_file_path, sep=",")
+        # 处理数据
+        df = DatasetLoaderUtils.clean_df(df)
 
-        return table
+        print(f"load_csv_dataset - {dataset_name}", df.shape)
+
+        # 保存数据为.npy格式
+        npy_file_path = f"./data/{dataset_name}/{dataset_name}.npy"
+        abs_npy_file_path = get_absolute_path(npy_file_path)
+        np.save(abs_npy_file_path, df.values)
+
+        print(abs_npy_file_path, "Saved")
+
+
+if __name__ == "__main__":
+    # dataset = "forest"
+    dataset = "census"
+    dir_path = f"./data/{dataset}"
+    DatasetConverter.convert_csv_into_npy(dataset_name=dataset)
+    NpyDatasetLoader.load_npy_dataset(dataset_name=dataset, dir_path=dir_path)
+    pass
