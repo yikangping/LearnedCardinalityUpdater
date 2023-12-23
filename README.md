@@ -87,7 +87,7 @@ cd ./data
 python table_sample.py --run init --init_size 200000
 
 # 测试当前数据集上模型的预测精度
-运行Evaluate-BJAQ.ipynb
+运行/FACE/evaluate/Evaluate-BJAQ.ipynb
 
 # 抽取增量更新数据，更新数据集，并进行数据漂移判定，输出mean reduction、2*std、Mean JS divergence三个参数，其中mean reduction>2*std是对照方法DDUp采用的drifts detection方法，我们的方法是通过JS divergence直观判断数据分布的漂移情况。
 # 更新数据的构建方法有三种：
@@ -97,7 +97,7 @@ python table_sample.py --run init --init_size 200000
 
 python table_sample.py --run update --update_type sample --update_size 20000 --sample_size 20000
 # 测试更新后的数据集上模型的预测精度
-运行Evaluate-BJAQ.ipynb
+运行/FACE/evaluate/Evaluate-BJAQ.ipynb
 
 # 本实验测试中需要记录数据漂移判定的几个量度值和计算时间，以及后续测试中模型的预测精度
 
