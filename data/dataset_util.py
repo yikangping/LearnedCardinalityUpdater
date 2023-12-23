@@ -1,5 +1,5 @@
 from data import datasets
-from constants.dataset_constants import validate_dataset
+from utils import arg_util
 
 
 def load_dataset(dataset: str):
@@ -12,7 +12,7 @@ def load_dataset(dataset: str):
     Returns:
         The loaded dataset
     """
-    validate_dataset(dataset)  # Validate dataset name
+    arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
     if dataset == "census":
         table = datasets.LoadCensus()
@@ -39,7 +39,7 @@ def load_permuted_dataset(dataset: str, permute: bool = False):
     Returns:
         tuple: The loaded dataset and the split indices.
     """
-    validate_dataset(dataset)  # Validate dataset name
+    arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
     if dataset == "census":
         table, split_indices = datasets.LoadPermutedCensus(permute=permute)
@@ -66,7 +66,7 @@ def load_partly_permuted_dataset(dataset: str, num_of_sorted_cols: int):
     Returns:
         The loaded dataset
     """
-    validate_dataset(dataset)  # Validate dataset name
+    arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
     if dataset == "census":
         table = datasets.LoadPartlyPermutedCensus(num_of_sorted_cols=num_of_sorted_cols)

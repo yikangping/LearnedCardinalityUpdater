@@ -15,9 +15,9 @@ import common
 import estimators as estimators_lib
 import made
 import transformer
-from constants.evaluation_constants import validate_eval_type
 from data import dataset_util
 from sqlParser import Parser
+from utils import arg_util
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
 from utils.torch_util import get_torch_device
 
@@ -1393,7 +1393,7 @@ def test_for_drift(
 
 
 def main():
-    validate_eval_type(args.eval_type)
+    arg_util.validate_argument(arg_util.ArgType.EVALUATION_TYPE, args.eval_type)
 
     if args.eval_type == "estimate":
         Model_Eval()

@@ -12,7 +12,7 @@ from nflows import flows
 from nflows import transforms
 from nflows import utils
 
-from constants.dataset_constants import validate_dataset
+from utils import arg_util
 
 PROJECT_PATH = "../"
 GPU_ID = 1
@@ -302,7 +302,7 @@ def main():
 
     # 提取参数
     args = parse_args()
-    validate_dataset(args.dataset)
+    arg_util.validate_argument(arg_util.ArgType.DATASET, args.dataset)
     if args.dataset == "bjaq":
         root_file = "./old_data/BJAQ.npy"
         save_file = "BJAQ.npy"
