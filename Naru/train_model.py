@@ -341,7 +341,7 @@ def TrainTask(seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table = dataset_util.load_dataset(dataset=args.dataset)
+    table = dataset_util.DatasetLoader.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,

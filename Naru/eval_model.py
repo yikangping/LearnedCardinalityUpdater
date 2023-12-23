@@ -262,7 +262,7 @@ def InvertOrder(order):
 
 def MakeTable(step=None):
     # Load dataset
-    table, _ = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
+    table, _ = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     oracle_est = estimators_lib.Oracle(table)
     if args.run_bn:
@@ -1094,7 +1094,7 @@ def LLTest(modelspath, seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table = dataset_util.load_dataset(dataset=args.dataset)
+    table = dataset_util.DatasetLoader.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1188,7 +1188,7 @@ def ConceptDriftTest(seed=0):
 
     results = {}
     for i in range(0, 10):
-        table = dataset_util.load_partly_permuted_dataset(dataset=args.dataset, num_of_sorted_cols=i)
+        table = dataset_util.DatasetLoader.load_partly_permuted_dataset(dataset=args.dataset, num_of_sorted_cols=i)
 
         table_bits = Entropy(
             table,
@@ -1355,7 +1355,7 @@ def test_for_drift(
 
     # Load data
     is_raw: bool = data_type == "raw"
-    table, split = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=is_raw)
+    table, split = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=is_raw)
 
     table_bits = Entropy(
         table,

@@ -832,7 +832,7 @@ def AdaptTask(pre_model, seed=0):
     np.random.seed(0)
 
     # Load data
-    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
+    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -1014,7 +1014,7 @@ def TrainTask(seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table = dataset_util.load_dataset(dataset=args.dataset)
+    table = dataset_util.DatasetLoader.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1174,7 +1174,7 @@ def UpdateTask(pre_model, seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
+    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -1358,7 +1358,7 @@ def FineTuneTask(pre_model, seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
+    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
@@ -1517,7 +1517,7 @@ def DistillTask(pre_model, seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table = dataset_util.load_dataset(dataset=args.dataset)
+    table = dataset_util.DatasetLoader.load_dataset(dataset=args.dataset)
 
     table_bits = Entropy(
         table,
@@ -1699,7 +1699,7 @@ def BayesCardExp(pre_model=None, seed=0):
     np.random.seed(0)
 
     # Load dataset
-    table, split_indices = dataset_util.load_permuted_dataset(dataset=args.dataset, permute=False)
+    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
 
     table_bits = Entropy(
         table,
