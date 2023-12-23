@@ -11,7 +11,7 @@ import common
 import made
 import transformer
 from utils import dataset_util
-from utils.model_util import save_model
+from utils.model_util import save_torch_model
 from utils.torch_util import get_torch_device
 
 DEVICE = get_torch_device()
@@ -477,7 +477,7 @@ def TrainTask(seed=0):
             "_".join(map(str, fixed_ordering)),
             annot,
         )
-    save_model(model, PATH)
+    save_torch_model(model, PATH)
 
 
 def main():

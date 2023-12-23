@@ -16,7 +16,7 @@ import common
 import made
 import transformer
 from utils import dataset_util
-from utils.model_util import save_model
+from utils.model_util import save_torch_model
 from utils.path_util import get_absolute_path
 from utils.torch_util import get_torch_device
 
@@ -1005,7 +1005,7 @@ def AdaptTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_model(model, PATH)
+        save_torch_model(model, PATH)
         pre_model = PATH
 
 
@@ -1149,7 +1149,7 @@ def TrainTask(seed=0):
             "_".join(map(str, fixed_ordering)),
             annot,
         )
-    save_model(model, PATH)
+    save_torch_model(model, PATH)
 
 
 def TransferDataPrepare(train_data, split_indices, update_step):
@@ -1349,7 +1349,7 @@ def UpdateTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_model(model, PATH)
+        save_torch_model(model, PATH)
         pre_model = PATH
 
 
@@ -1508,7 +1508,7 @@ def FineTuneTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_model(model, PATH)
+        save_torch_model(model, PATH)
         pre_model = PATH
 
 
@@ -1689,7 +1689,7 @@ def DistillTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_model(model, PATH)
+        save_torch_model(model, PATH)
         pre_model = PATH
         os.sys.exit()
 
@@ -1833,7 +1833,7 @@ def BayesCardExp(pre_model=None, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_model(model, PATH)
+        save_torch_model(model, PATH)
         pre_model = PATH
 
     if args.dataset in ["dmv-tiny", "dmv", "tpcds"]:

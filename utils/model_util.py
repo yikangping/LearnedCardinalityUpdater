@@ -3,10 +3,10 @@ import os
 import torch
 from torch.nn import Module
 
-from utils.path_util import get_absolute_path
+from utils import path_util
 
 
-def save_model(model: Module, relative_path: str) -> None:
+def save_torch_model(model: Module, relative_path: str) -> None:
     """
     保存给定的 PyTorch 模型到指定的相对路径。
 
@@ -21,7 +21,7 @@ def save_model(model: Module, relative_path: str) -> None:
         None: 函数不返回任何值，但会打印模型保存的位置。
     """
     # 获取绝对路径
-    absolute_path = get_absolute_path(relative_path)
+    absolute_path = path_util.get_absolute_path(relative_path)
     os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
 
     # 保存模型的状态字典
