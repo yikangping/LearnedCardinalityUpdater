@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import common
 import made
 import transformer
-from data import dataset_util
+from utils import dataset_util
 from utils.model_util import save_model
 from utils.torch_util import get_torch_device
 

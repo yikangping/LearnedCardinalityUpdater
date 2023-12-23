@@ -15,9 +15,8 @@ import common
 import estimators as estimators_lib
 import made
 import transformer
-from data import dataset_util
 from sqlParser import Parser
-from utils import arg_util
+from utils import arg_util, dataset_util
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
 from utils.torch_util import get_torch_device
 
