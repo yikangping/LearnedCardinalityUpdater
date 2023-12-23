@@ -19,7 +19,6 @@ PROJECT_PATH = "../"
 GPU_ID = 1
 dataset_name = "BJAQ"
 
-
 """ network parameters """
 hidden_features = 56
 num_flow_steps = 6
@@ -30,7 +29,6 @@ features = 5
 
 REUSE_FROM_FILE = False
 REUSE_FILE_PATH = PROJECT_PATH + "train/"
-
 
 """ query settings"""
 query_seed = 45
@@ -108,11 +106,10 @@ def create_transform():
     return transform
 
 
-def load_model(device):
+def load_model(device, model_name: str = "BJAQ"):
     distribution = distributions.StandardNormal((features,))
     transform = create_transform()
     flow = flows.Flow(transform, distribution)
-    model_name = "BJAQ"
 
     # if 'Ti' in DEVICENAME:
     #     path = os.path.join(PROJECT_PATH+'train/models/{}'.format(dataset_name),
@@ -121,10 +118,15 @@ def load_model(device):
     # else:
     #     assert False
 
+    # TODO:
+    #   1. 若是对于census/power数据集，应使用哪个模型？共有4个可选项(origin/FT/update/adapt)
+    #   2. FACE/train/models/power/power-id1-best-val.t报错size mismatch
     path = os.path.join(
         PROJECT_PATH + "train/models/{}".format(model_name),
         "{}-id{}-best-val.t".format(model_name, flow_id),
     )
+
+    print("Load model from:", path)
 
     flow.load_state_dict(torch.load(path))
 
@@ -199,11 +201,11 @@ def js_div(p_output, q_output, get_softmax=False):
     # print("P_output shape: {}".format(p_output.shape))
     # print("data sample: {}".format(q_output[:5]))
     return (
-        KLDivLoss(log_mean_output, p_output) + KLDivLoss(log_mean_output, q_output)
+            KLDivLoss(log_mean_output, p_output) + KLDivLoss(log_mean_output, q_output)
     ) / 2
 
 
-def loss(sample):
+def loss(sample, flow):
     log_density = flow.log_prob(sample)
     loss = -torch.mean(log_density)
     std = torch.std(log_density)
@@ -216,19 +218,19 @@ def conca_and_save(save_file, old_data, update_data):
     np.save(save_file, new_data)
 
 
-def loss_test(data, update_data, sample_size):
-    loss_start_time=time.time()
+def loss_test(data, update_data, sample_size, flow):
+    loss_start_time = time.time()
 
     old_sample = sampling(data, sample_size, replace=False)
     new_sample = sampling(update_data, sample_size, replace=False)
 
-    old_mean, old_std = loss(old_sample)
-    new_mean, _ = loss(new_sample)
+    old_mean, old_std = loss(old_sample, flow=flow)
+    new_mean, _ = loss(new_sample, flow=flow)
     mean_reduction = abs(new_mean - old_mean)
     threshold = 2 * old_std
 
-    loss_end_time=time.time()
-    loss_running_time=loss_end_time-loss_start_time
+    loss_end_time = time.time()
+    loss_running_time = loss_end_time - loss_start_time
     print("old loss mean - new loss mean: {:.4f}".format(mean_reduction))
     print("2 * std: {:.4f}".format(threshold))
     print("loss test running time: {:.4f}s".format(loss_running_time))
@@ -237,7 +239,7 @@ def loss_test(data, update_data, sample_size):
 
 def JS_test(data, update_data, sample_size, epoch=32):
     # assert update_type in ["sample", "single", "permute"], "Update type error!"
-    js_start_time=time.time()
+    js_start_time = time.time()
     js_divergence = []
     for i in range(epoch):
         old_sample = sampling(data, sample_size, replace=False)
@@ -252,8 +254,8 @@ def JS_test(data, update_data, sample_size, epoch=32):
     js_divergence = np.array(js_divergence).astype(np.float32)
     js_mean = np.mean(js_divergence)
 
-    js_end_time=time.time()
-    js_running_time=js_end_time-js_start_time
+    js_end_time = time.time()
+    js_running_time = js_end_time - js_start_time
     print("Mean JS divergence: {:.4f}".format(js_mean))
     print("JS devergence running time: {:.4f}s".format(js_running_time))
     return JS_diver
@@ -296,7 +298,7 @@ def parse_args():
     assert args.run in ["init", "update"], "Running Type Error!"
     assert args.update in ["sample", "single", "permute"], "Update Type Error!"
     assert (
-        args.update_size >= args.sample_size
+            args.update_size >= args.sample_size
     ), "Error! Update Size Must Be Greater Than Sample Size!"
     return args
 
@@ -309,16 +311,17 @@ def main():
     arg_util.validate_argument(arg_util.ArgType.DATASET, args.dataset)
     ini_data_size = args.init_size
 
-    dataset = args.dataset
-    if dataset in ["census", "forest", "bjaq", "power"]:
-        raw_file_path = f"./data/{dataset}/{dataset}.npy"
-        sampled_file_path = f"./data/{dataset}/sampled/{dataset}-sample{ini_data_size}.npy"
+    dataset_name = args.dataset
+    if dataset_name in ["census", "forest", "bjaq", "power"]:
+        raw_file_path = f"./data/{dataset_name}/{dataset_name}.npy"
+        sampled_file_path = f"./data/{dataset_name}/sampled/{dataset_name}-sample{ini_data_size}.npy"
     else:
         return
     raw_file_path = get_absolute_path(raw_file_path)
     sampled_file_path = get_absolute_path(sampled_file_path)
 
-    flow = load_model(device)
+    model_name = "BJAQ" if dataset_name == "bjaq" else dataset_name
+    flow = load_model(device, model_name=model_name)
 
     # 为原始数据集创建子集
     if args.run == "init":
@@ -345,7 +348,7 @@ def main():
 
         # update_data = np.concatenate((data, update_data), axis=0)
 
-        mean_reduction, threshold = loss_test(data, update_data, sample_size)
+        mean_reduction, threshold = loss_test(data, update_data, sample_size, flow=flow)
         # print("sample dtype: {}".format(old_sample.dtype))
         JS_diver = JS_test(data, update_data, sample_size)
         conca_and_save(sampled_file_path, data, update_data)
