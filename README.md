@@ -95,7 +95,7 @@ python table_sample.py --run init --init_size 200000
 # permute:对不同属性，从当前数据集中随机采样属性值，构建重组数据，抽取若干条构成更新数据，是DDUp中提出的数据漂移的主要来源，Naru中采用的数据更新方法也是这种
 # single:从当前数据集中随机采样一条数据，并复制若干条构成更新数据，这是DDUp方法判断会出现问题的一种情形，也是我们的方法的主要创新点来源
 
-python table_sample.py --run update --update_type sample --update_size 20000 --sample_size 20000
+python table_sample.py --run update --update sample --update_size 20000 --sample_size 20000
 # 测试更新后的数据集上模型的预测精度
 运行/FACE/evaluate/Evaluate-BJAQ.ipynb
 
