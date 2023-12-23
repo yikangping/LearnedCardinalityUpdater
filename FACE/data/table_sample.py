@@ -107,6 +107,7 @@ def create_transform():
 
 
 def load_model(device, model_name: str = "BJAQ"):
+    print("Load model - START")
     distribution = distributions.StandardNormal((features,))
     transform = create_transform()
     flow = flows.Flow(transform, distribution)
@@ -137,6 +138,7 @@ def load_model(device, model_name: str = "BJAQ"):
     # print('There are {} trainable parameters in this model.'.format(n_params))
     # print('Parameters total size is {} MB'.format(n_params * 4 / 1024 / 1024))
 
+    print("Load model - END")
     return flow
 
 
@@ -157,19 +159,37 @@ def sampling(data, size, replace):
     sample_idx = np.random.choice(range(data.shape[0]), size=size, replace=replace)
     sample_idx = np.sort(sample_idx)
     sample = data[sample_idx]
+
     return sample
 
 
 def permute(data, size):
-    samples = np.empty(shape=(0, data.shape[1]))
-    for _ in range(size):
-        idxs = np.random.choice(range(data.shape[0]), data.shape[1], replace=False)
-        sample = np.empty(shape=(1, data.shape[1]))
-        for i, idx in enumerate(idxs):
-            sample[0][i] = data[idx][i]
+    print("Permute - START")
+    n_rows, n_cols = data.shape
 
-        samples = np.concatenate((samples, sample), axis=0)
+    # 预先分配足够大的数组
+    samples = np.empty(shape=(size, n_cols))
 
+    for i in range(size):
+        if i % 100 == 0:
+            print("Permute - {}/{}".format(i, size))
+        idxs = np.random.choice(range(n_rows), n_cols, replace=False)
+        for j, idx in enumerate(idxs):
+            samples[i, j] = data[idx, j]
+
+    print("Permute - END")
+    return samples.astype(np.float32)
+
+
+def permute_optimized(data, size):
+    print("Permute - START")
+    n_rows, n_cols = data.shape
+    samples = np.zeros((size, n_cols))
+
+    for col in range(n_cols):
+        samples[:, col] = np.random.choice(data[:, col], size, replace=False)
+
+    print("Permute - END")
     return samples.astype(np.float32)
 
 
@@ -310,7 +330,6 @@ def main():
     args = parse_args()
     arg_util.validate_argument(arg_util.ArgType.DATASET, args.dataset)
     ini_data_size = args.init_size
-
     dataset_name = args.dataset
     if dataset_name in ["census", "forest", "bjaq", "power"]:
         raw_file_path = f"./data/{dataset_name}/{dataset_name}.npy"
@@ -320,9 +339,6 @@ def main():
     raw_file_path = get_absolute_path(raw_file_path)
     sampled_file_path = get_absolute_path(sampled_file_path)
 
-    model_name = "BJAQ" if dataset_name == "bjaq" else dataset_name
-    flow = load_model(device, model_name=model_name)
-
     # 为原始数据集创建子集
     if args.run == "init":
         raw_data = np.load(raw_file_path, allow_pickle=True)
@@ -331,6 +347,10 @@ def main():
         os.makedirs(os.path.dirname(sampled_file_path), exist_ok=True)
         np.save(sampled_file_path, ini_data)
         print(sampled_file_path, "saved")
+        return
+
+    model_name = "BJAQ" if dataset_name == "bjaq" else dataset_name
+    flow = load_model(device, model_name=model_name)
 
     # 抽取增量更新数据，更新数据集，并进行数据漂移判定，输出mean reduction、2*std、Mean JS divergence三个参数
     if args.run == "update":
@@ -340,7 +360,7 @@ def main():
         # data=np.load(root_file).astype(np.float32)
 
         if args.update == "permute":
-            update_data = permute(data, update_size)
+            update_data = permute_optimized(data, update_size)
         elif args.update == "sample":
             update_data = sampling(data, update_size, replace=True)
         else:
@@ -348,7 +368,9 @@ def main():
 
         # update_data = np.concatenate((data, update_data), axis=0)
 
+        # 若报错，暂时不计算mean_reduction和threshold
         mean_reduction, threshold = loss_test(data, update_data, sample_size, flow=flow)
+
         # print("sample dtype: {}".format(old_sample.dtype))
         JS_diver = JS_test(data, update_data, sample_size)
         conca_and_save(sampled_file_path, data, update_data)
