@@ -15,13 +15,13 @@ def load_dataset(dataset: str):
     arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
     if dataset == "census":
-        table = datasets.LoadCensus()
+        table = datasets.load_csv_dataset(dataset_name="census")
     elif dataset == "forest":
-        table = datasets.LoadForest()
+        table = datasets.load_csv_dataset(dataset_name="forest")
     elif dataset == "bjaq":
-        table = datasets.LoadBJAQ()
+        table = datasets.load_npy_dataset(dataset_name="BJAQ")
     elif dataset == "power":
-        table = datasets.LoadPower()
+        table = datasets.load_npy_dataset(dataset_name="power")
     else:
         raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -42,13 +42,13 @@ def load_permuted_dataset(dataset: str, permute: bool = False):
     arg_util.validate_argument(arg_util.ArgType.DATASET, dataset)
 
     if dataset == "census":
-        table, split_indices = datasets.LoadPermutedCensus(permute=permute)
+        table, split_indices = datasets.load_permuted_csv_dataset(dataset_name="census", permute=permute)
     elif dataset == "forest":
-        table, split_indices = datasets.LoadPermutedForest(permute=permute)
+        table, split_indices = datasets.load_permuted_csv_dataset(dataset_name="forest", permute=permute)
     elif dataset == "bjaq":
-        table, split_indices = datasets.LoadPermutedBJAQ(permute=permute)
+        table, split_indices = datasets.load_permuted_npy_dataset(dataset_name="BJAQ", permute=permute)
     elif dataset == "power":
-        table, split_indices = datasets.LoadPermutedPower(permute=permute)
+        table, split_indices = datasets.load_permuted_npy_dataset(dataset_name="power", permute=permute)
     else:
         raise ValueError(f"Unknown dataset name \"{dataset}\"")
     
