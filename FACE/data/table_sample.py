@@ -13,6 +13,7 @@ from nflows import transforms
 from nflows import utils
 
 from utils import arg_util
+from utils.path_util import get_absolute_path
 
 PROJECT_PATH = "../"
 GPU_ID = 1
@@ -148,6 +149,9 @@ def normalized(data):
 
 
 def sampling(data, size, replace):
+    if not replace and size > data.shape[0]:
+        raise ValueError("Size cannot be greater than the number of rows in data when replace is False")
+
     sample_idx = np.random.choice(range(data.shape[0]), size=size, replace=replace)
     sample_idx = np.sort(sample_idx)
     sample = data[sample_idx]
@@ -303,26 +307,37 @@ def main():
     # 提取参数
     args = parse_args()
     arg_util.validate_argument(arg_util.ArgType.DATASET, args.dataset)
-    if args.dataset == "bjaq":
-        root_file = "./old_data/BJAQ.npy"
-        save_file = "BJAQ.npy"
+    ini_data_size = args.init_size
+
+    if args.dataset == "census":
+        root_file = "./data/census/census.npy"
+        save_file = f"./data/census/census-sample{ini_data_size}.npy"
+    elif args.dataset == "forest":
+        root_file = "./data/forest/forest.npy"
+        save_file = f"./data/forest/forest-sample{ini_data_size}.npy"
+    elif args.dataset == "bjaq":
+        root_file = "./FACE/data/old_data/BJAQ.npy"
+        save_file = f"./data/BJAQ/BJAQ-sample{ini_data_size}.npy"
     elif args.dataset == "power":
-        root_file = "./old_data/power.npy"
-        save_file = "power.npy"
+        root_file = "./FACE/data/old_data/power.npy"
+        save_file = f"./data/power/power-sample{ini_data_size}.npy"
     else:
         return
+    root_file = get_absolute_path(root_file)
+    save_file = get_absolute_path(save_file)
 
-    # print(bjaq.shape)
     flow = load_model(device)
 
-    ini_data_size = args.init_size
+    # 为原始数据集创建子集
     if args.run == "init":
-        raw_data = np.load(root_file)
+        raw_data = np.load(root_file, allow_pickle=True)
         ini_data = sampling(raw_data, ini_data_size, replace=False)
         print(ini_data.shape)
         np.save(save_file, ini_data)
+        print(save_file, "saved")
 
-    elif args.run == "update":
+    # 抽取增量更新数据，更新数据集，并进行数据漂移判定，输出mean reduction、2*std、Mean JS divergence三个参数
+    if args.run == "update":
         update_size = args.update_size
         sample_size = args.sample_size
         data = np.load(save_file).astype(np.float32)
