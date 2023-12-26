@@ -16,7 +16,8 @@ incremental_train.py
 定义2种workload，随机进
 1. query
 2. 更新数据(permute(原eval_model.py)/sample/permute/single)
-   - 加3中，实现数据增加 
+   - 加3种
+   - 实现数据增加 
 
 每一次workload 2后，检测一次datadrift(eval_type drift)
 - 若检测到drift，就更新模型
@@ -37,16 +38,17 @@ incremental_train.py
   - forest
   - power
 - drift_test_method (python Naru/eval_model.py --dataset census --eval_type drift
-  - js-divergence (our)
+  - js (JS-divergence, our)
   - ddup
 - model_update_method (incremental_train.py)
-  - ddup -> Update (DDUp) + finetune (baseline)
-  - js-divergence -> Adapt (our) +  finetune (baseline)
+  - update (DDUp -> ddup)
+  - adapt (our -> js)
+  - finetune (baseline -> ddup & js)
 - data_update_method
   - permute (DDUp)
   - sample (FACE)
   - permute (FACE)
-  - single (our) TODO: 想其他更新方法
+  - single (our)
 - model
   - naru
   - face

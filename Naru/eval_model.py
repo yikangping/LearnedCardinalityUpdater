@@ -1406,6 +1406,8 @@ def main():
         model_paths = glob.glob(str(absolute_model_paths))
         print("Count of model paths =", len(model_paths))
         for model_path in model_paths:
+            # 判断模型是否偏移
+            # TODO: 加1个JS_divergence
             test_for_drift(
                 pre_model=model_path, data_type="raw"
             )
