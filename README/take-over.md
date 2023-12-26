@@ -28,7 +28,12 @@ pip install -r requirement.txt
 
 ## 安装其他依赖
 ```shell
+# 安装Jupyter
 pip install jupyter
+
+# 安装nflows
 pip install nflows
-pip install torchquad
+
+# 进入/FACE/torchquadMy目录，安装重写的torchquad
+pip install .
 ```
