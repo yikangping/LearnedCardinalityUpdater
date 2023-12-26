@@ -2,14 +2,14 @@
 
 # 端到端TODO
 ## 文件功能
-eval_model.py --eval_type drift
+eval_model.py --eval_type drift 对应数据更新workload
 - 更新数据
 - 检测是否漂移
 
-eval_model.py --eval_type estimate
+eval_model.py --eval_type estimate 对应查询workload
 - 检测query准确度
 
-incremental_train.py
+incremental_train.py 对应检测到drift后的模型更新
 - 模型更新，ddup或adapt
 
 ## 工作流程

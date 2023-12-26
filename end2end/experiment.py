@@ -1,8 +1,8 @@
 import argparse
 import sys
 
+from end2end.workload import QueryWorkload, DataUpdateWorkload, WorkloadGenerator
 from utils import path_util
-import workload_util
 
 
 def parse_args():
@@ -103,23 +103,24 @@ def main():
         'model': args.model,
     }
     allowed_workloads = {
-        workload_util.QueryWorkload(args=workload_args, script_path=workload_script_path): 15,
-        workload_util.DataUpdateWorkload(args=workload_args, script_path=workload_script_path): 5,
+        QueryWorkload(args=workload_args, script_path=workload_script_path): 15,
+        DataUpdateWorkload(args=workload_args, script_path=workload_script_path): 5,
     }
-    workload_generator = workload_util.WorkloadGenerator(workloads=allowed_workloads, random_seed=args.random_seed)
+    workload_generator = WorkloadGenerator(workloads=allowed_workloads, random_seed=args.random_seed)
     # 生成args.num_workload个工作负载
     generated_workloads = [workload_generator.generate() for _ in range(args.num_workload)]
 
     # >>> 运行工作负载 <<<
     # 顺序运行所有工作负载
     for i, workload in enumerate(generated_workloads):
-        print(f"Start workload {i+1}/{args.num_workload}, which is a {workload.get_workload_name()}")
+        print(f"Start workload {i+1}/{args.num_workload}, type: {workload.get_type()}")
 
         # 运行当前工作负载
         # workload.execute_workload()
 
         # 若为DataUpdateWorkload，则需要检测漂移；若漂移，则更新模型
-        if isinstance(workload, workload_util.DataUpdateWorkload):
+        if isinstance(workload, DataUpdateWorkload):
+            print('is DataUpdateWorkload')
             pass
 
         # print(f"Finish workload {i+1}/{args.num_workload}, which is a {workload.get_workload_name()}")

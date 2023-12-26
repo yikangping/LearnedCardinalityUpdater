@@ -11,7 +11,7 @@ class BaseWorkload(ABC):
     """
     The base class of all workloads.
     """
-    def get_workload_name(self):
+    def get_type(self):
         return self.__class__.__name__
 
     @abstractmethod
