@@ -37,18 +37,18 @@ incremental_train.py 对应检测到drift后的模型更新
   - census
   - forest
   - power
-- drift_test_method (python Naru/eval_model.py --dataset census --eval_type drift
+- drift_test (Naru/eval_model.py --eval_type drift)
   - js (JS-divergence, our)
   - ddup
-- model_update_method (incremental_train.py)
-  - update (DDUp -> ddup)
-  - adapt (our -> js)
-  - finetune (baseline -> ddup & js)
-- data_update_method
-  - permute (DDUp)
+- data_update (Naru/eval_model.py --eval_type drift)
+  - permute-ddup (DDUp)
   - sample (FACE)
   - permute (FACE)
   - single (our)
+- model_update (Naru/incremental_train.py)
+  - update (DDUp -> ddup)
+  - adapt (our -> js)
+  - finetune (baseline -> ddup & js)
 - model
   - naru
   - face

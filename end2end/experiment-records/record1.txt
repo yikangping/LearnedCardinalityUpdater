@@ -1,0 +1,47 @@
+UPDATE-MODEL-PATH=./models/origin-census-22.5MB-model26.689-data14.989-300epochs-seed0.pt
+Input arguments = Namespace(dataset='bjaq', drift_test='ddup', model_update='update', data_update='permute', model='naru', random_seed=42, num_workload=20)
+Start workload 1/20, type: QueryWorkload
+Finish workload 1/20, which is a QueryWorkload
+Start workload 2/20, type: QueryWorkload
+Finish workload 2/20, which is a QueryWorkload
+Start workload 3/20, type: QueryWorkload
+Finish workload 3/20, which is a QueryWorkload
+Start workload 4/20, type: QueryWorkload
+Finish workload 4/20, which is a QueryWorkload
+Start workload 5/20, type: QueryWorkload
+Finish workload 5/20, which is a QueryWorkload
+Start workload 6/20, type: QueryWorkload
+Finish workload 6/20, which is a QueryWorkload
+Start workload 7/20, type: QueryWorkload
+Finish workload 7/20, which is a QueryWorkload
+Start workload 8/20, type: DataUpdateWorkload
+is DataUpdateWorkload
+Finish workload 8/20, which is a DataUpdateWorkload
+Start workload 9/20, type: QueryWorkload
+Finish workload 9/20, which is a QueryWorkload
+Start workload 10/20, type: DataUpdateWorkload
+is DataUpdateWorkload
+Finish workload 10/20, which is a DataUpdateWorkload
+Start workload 11/20, type: QueryWorkload
+Finish workload 11/20, which is a QueryWorkload
+Start workload 12/20, type: QueryWorkload
+Finish workload 12/20, which is a QueryWorkload
+Start workload 13/20, type: QueryWorkload
+Finish workload 13/20, which is a QueryWorkload
+Start workload 14/20, type: QueryWorkload
+Finish workload 14/20, which is a QueryWorkload
+Start workload 15/20, type: QueryWorkload
+Finish workload 15/20, which is a QueryWorkload
+Start workload 16/20, type: QueryWorkload
+Finish workload 16/20, which is a QueryWorkload
+Start workload 17/20, type: DataUpdateWorkload
+is DataUpdateWorkload
+Finish workload 17/20, which is a DataUpdateWorkload
+Start workload 18/20, type: DataUpdateWorkload
+is DataUpdateWorkload
+Finish workload 18/20, which is a DataUpdateWorkload
+Start workload 19/20, type: QueryWorkload
+Finish workload 19/20, which is a QueryWorkload
+Start workload 20/20, type: DataUpdateWorkload
+is DataUpdateWorkload
+Finish workload 20/20, which is a DataUpdateWorkload

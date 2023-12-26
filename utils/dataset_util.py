@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -234,17 +236,22 @@ class NpyDatasetLoader:
         return df, column_names
 
     @staticmethod
-    def load_npy_dataset(dataset_name: str):
+    def load_npy_dataset_from_path(path: Path):
         # 读取数据
-        abs_file_path = get_absolute_path(f"./data/{dataset_name}/{dataset_name}.npy")
-        df, cols = NpyDatasetLoader._load_npy_as_df(abs_file_path)
+        df, cols = NpyDatasetLoader._load_npy_as_df(path)
 
         # 处理数据
         df = DatasetLoaderUtils.clean_df(df)
 
-        print("_load_npy_dataset - df.shape =", df.shape)
+        print("load_npy_dataset_from_path - df.shape =", df.shape)
 
-        return common.CsvTable(dataset_name, df, cols)
+        return common.CsvTable('default', df, cols)
+
+    @staticmethod
+    def load_npy_dataset(dataset_name: str):
+        # 读取数据
+        abs_file_path = get_absolute_path(f"./data/{dataset_name}/{dataset_name}.npy")
+        return NpyDatasetLoader.load_npy_dataset_from_path(path=abs_file_path)
 
     @staticmethod
     def load_permuted_npy_dataset(dataset_name: str, permute=True):

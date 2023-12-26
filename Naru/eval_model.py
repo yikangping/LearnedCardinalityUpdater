@@ -15,8 +15,11 @@ import common
 import estimators as estimators_lib
 import made
 import transformer
+from FACE.data import table_sample
+from end2end import data_updater
 from sqlParser import Parser
-from utils import arg_util, dataset_util
+from utils import dataset_util
+from utils.end2end_utils import communicator
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
 from utils.torch_util import get_torch_device
 
@@ -29,6 +32,13 @@ DEVICE = get_torch_device()
 
 def create_parser():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--end2end",
+        type=str,
+        default="false",
+        help="Whether to run end2end experiment.",
+    )
 
     parser.add_argument(
         "--inference-opts",
@@ -131,6 +141,7 @@ def create_parser():
     parser.add_argument(
         "--eval_type",
         type=str,
+        choices=['estimate', 'drift'],
         default="estimate",
         help="Model evaluation type, estimate or drift",
     )
@@ -598,6 +609,8 @@ def RunN(
 
     max_err = ReportEsts(estimators)
 
+    print("max_err", max_err)
+
     return False
 
 
@@ -804,12 +817,21 @@ def LoadOracleCardinalities():
     return None
 
 
-def Model_Eval():
-    relative_model_paths = "./models/*{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-    absolute_model_paths = get_absolute_path(relative_model_paths)
-    all_ckpts = glob.glob(str(absolute_model_paths))
-    if args.blacklist:
-        all_ckpts = [ckpt for ckpt in all_ckpts if args.blacklist not in ckpt]
+def Model_Eval(args, end2end: bool = False):
+    """
+    查询负载
+    """
+    # 获取模型路径
+    if not end2end:
+        # 原逻辑
+        relative_model_paths = "./models/*{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+        absolute_model_paths = get_absolute_path(relative_model_paths)
+        all_ckpts = glob.glob(str(absolute_model_paths))
+        if args.blacklist:
+            all_ckpts = [ckpt for ckpt in all_ckpts if args.blacklist not in ckpt]
+    else:
+        # end2end模式
+        all_ckpts = [communicator.ModelPathCommunicator().get()]
 
     selected_ckpts = all_ckpts
     oracle_cards = None  # LoadOracleCardinalities()
@@ -1253,13 +1275,19 @@ def ConceptDriftTest(seed=0):
 
 
 def test_for_drift(
-        pre_model, seed=0, bootstrap=1000, sample_size=500, data_type="raw"
+        args,
+        pre_model,
+        end2end: bool = False,
+        seed=0,
+        bootstrap=1000,
+        sample_size=500,
+        data_type="raw"
 ):
+    """
+    数据更新 + 漂移检测
+    """
     torch.manual_seed(0)
     np.random.seed(0)
-
-    # pre_model = "../models/census-22.5MB-model26.564-data14.989-300epochs-seed0.pt"
-    # pre_model = "../models/01census-11.1MB-model45.816-data15.290-made-hidden128_128_128_128-emb32-nodirectIo-binaryInone_hotOut-inputNoEmbIfLeq-20epochs-seed0.pt"
 
     def offline_phase(table, model, table_bits, simulations, sample_size):
         t1 = time.time()
@@ -1353,77 +1381,116 @@ def test_for_drift(
         else:
             return "no-drift", t2 - t1
 
-    # Load data
-    is_raw: bool = data_type == "raw"
-    table, split = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=is_raw)
+    def update_data():
+        """
+        数据更新
+        """
+        raw_data, sampled_data = None, None
+        if not end2end:
+            # 原逻辑：permute
+            is_raw: bool = data_type == "raw"
+            table, _ = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=is_raw)
+        else:
+            # end2end模式：permute, single, sample三选一
+            # 获取数据集路径
+            abs_dataset_path = communicator.DatasetPathCommunicator().get()
+            # 读取当前数据集
+            raw_data = np.load(abs_dataset_path).astype(np.float32)  # 原数据，参与计算JS test
+            # 更新数据
+            updater = data_updater.DataUpdater(
+                data=raw_data,
+                sampler=data_updater.create_sampler(
+                    sampler_type=args.data_update,
+                    update_fraction=0.2
+                )
+            )  # 创建DataUpdater
+            updater.update_data()  # 更新数据
+            sampled_data = updater.get_sampled_data()  # 新增的数据，参与计算JS test
+            # 将更新后的数据保存到原路径
+            updater.store_updated_data_to_file(output_path=abs_dataset_path)
+            # 读取更新后的数据
+            table = dataset_util.NpyDatasetLoader.load_npy_dataset_from_path(path=abs_dataset_path)
+        return table, raw_data, sampled_data
 
-    table_bits = Entropy(
-        table,
-        table.data.fillna(value=0).groupby([c.name for c in table.columns]).size(),
-        [2],
-    )
+    # 更新数据
+    table, raw_data, sampled_data = update_data()
 
-    fixed_ordering = None
+    def drift_detect() -> bool:
+        # 漂移检测 - DDUp
+        if not end2end or args.drift_test == "ddup":
+            table_bits = Entropy(
+                table,
+                table.data.fillna(value=0).groupby([c.name for c in table.columns]).size(),
+                [2],
+            )
 
-    if args.order is not None:
-        print("Using passed-in order:", args.order)
-        fixed_ordering = args.order
+            fixed_ordering = None
 
-    # print(table.data.info())
+            if args.order is not None:
+                print("Using passed-in order:", args.order)
+                fixed_ordering = args.order
 
-    model = MakeMade(
-        scale=args.fc_hiddens,
-        cols_to_train=table.columns,
-        seed=seed,
-        fixed_ordering=fixed_ordering,
-    )
+            # print(table.data.info())
 
-    # model.load_state_dict(torch.load(args.glob))
-    model.load_state_dict(torch.load(pre_model))
-    model.eval()
+            model = MakeMade(
+                scale=args.fc_hiddens,
+                cols_to_train=table.columns,
+                seed=seed,
+                fixed_ordering=fixed_ordering,
+            )
 
-    # mb = ReportModel(model)
+            # model.load_state_dict(torch.load(args.glob))
+            model.load_state_dict(torch.load(pre_model))
+            model.eval()
 
-    mean, threshold, time_off = offline_phase(
-        table, model, table_bits, simulations=bootstrap, sample_size=sample_size
-    )
-    output, time_on = online_phase(
-        table, model, table_bits, mean, threshold, sample_size=sample_size
-    )
-    print("Offline time = {}\nonline time = {}".format(time_off, time_on))
-    print("Test result: {}".format(output))
+            # mb = ReportModel(model)
+
+            mean, threshold, time_off = offline_phase(
+                table, model, table_bits, simulations=bootstrap, sample_size=sample_size
+            )
+            output, time_on = online_phase(
+                table, model, table_bits, mean, threshold, sample_size=sample_size
+            )
+            print("Offline time = {}\nonline time = {}".format(time_off, time_on))
+            print("Test result: {}".format(output))
+            return False  # TODO: 如何判断是否drift
+
+        # 漂移检测 - JS test
+        if args.drift_test == "js":
+            table_sample.JS_test(data=raw_data, update_data=sampled_data, sample_size=args.sample_size)
+            return False  # TODO: 如何判断是否drift
+
+    # 漂移检测
+    is_drift = drift_detect()
+    communicator.DriftCommunicator().set(is_drift=is_drift)  # 将结果写入txt文件
 
 
 def main():
-    arg_util.validate_argument(arg_util.ArgType.EVALUATION_TYPE, args.eval_type)
+    # 是否运行end2end实验
+    is_end2end = args.end2end == 'true'
 
+    # 查询负载
     if args.eval_type == "estimate":
-        Model_Eval()
+        Model_Eval(args=args, end2end=is_end2end)
 
+    # 更新负载：数据更新+漂移检测
     if args.eval_type == "drift":
-        relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-        absolute_model_paths = get_absolute_path(relative_model_paths)
-        model_paths = glob.glob(str(absolute_model_paths))
-        print("Count of model paths =", len(model_paths))
+        if not is_end2end:
+            # 原逻辑：处理所有模型
+            relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+            absolute_model_paths = get_absolute_path(relative_model_paths)
+            model_paths = glob.glob(str(absolute_model_paths))
+            # print("Count of model paths =", len(model_paths))
+        else:
+            # end2end: 仅处理1个模型
+            model_paths = [communicator.ModelPathCommunicator().get()]
         for model_path in model_paths:
-            # 判断模型是否偏移
-            # TODO: 加1个JS_divergence
             test_for_drift(
-                pre_model=model_path, data_type="raw"
+                args=args,
+                end2end=is_end2end,
+                pre_model=model_path,
+                data_type="raw"
             )
-    # # MainAll(modelspath='models_to_eval/')
-    # # LLTest(modelspath="models_to_eval/")
-    # test_for_drift(
-    #     pre_model="../models/update_census-22.5MB-model39.629-data15.215-100epochs-seed0.pt"
-    # )
-
-    # test_for_drift(
-    #     pre_model="../models/FT-census-22.5MB-model25.755-data15.215-100epochs-seed0.pt"
-    # )
-
-    # test_for_drift(
-    #     pre_model="../models/origin-census-22.5MB-model26.797-data14.989-200epochs-seed0.pt", data_type="raw"
-    # )
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ import common
 import made
 import transformer
 from utils import dataset_util
+from utils.end2end_utils import communicator
 from utils.model_util import save_torch_model
 from utils.path_util import get_absolute_path
 from utils.torch_util import get_torch_device
@@ -1980,18 +1981,29 @@ def BayesCardExp(pre_model=None, seed=0):
 
 
 def main():
+    # 是否运行end2end实验
+    is_end2end = args.end2end == 'true'
+
+    if not is_end2end:
+        # 原逻辑
+        relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
+        absolute_model_paths = get_absolute_path(relative_model_paths)
+        model_paths = glob.glob(str(absolute_model_paths))
+        for model_path in model_paths:
+            AdaptTask(pre_model=model_path)
+            UpdateTask(pre_model=model_path)
+            FineTuneTask(pre_model=model_path)
+    else:
+        model_path = communicator.ModelPathCommunicator().get()
+        # TODO:
+        pass
+
     # TrainTask()
     # BayesCardExp(pre_model="models/00tpcds-12.9MB-model10.410-data13.514-made-resmade-hidden128_128_128_128-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-10epochs-seed0.pt")
     # UpdateTask(
     #     pre_model="./models/census-38.5MB-model30.303-data15.573-made-resmade-hidden256_256_256_256_256-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-20epochs-seed0.pt"
     # )
-    relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
-    absolute_model_paths = get_absolute_path(relative_model_paths)
-    model_paths = glob.glob(str(absolute_model_paths))
-    for model_path in model_paths:
-        AdaptTask(pre_model=model_path)
-        UpdateTask(pre_model=model_path)
-        FineTuneTask(pre_model=model_path)
+
     # if args.dataset=="census":
     #     pre_model="./models/origin-census-22.5MB-model26.797-data14.989-200epochs-seed0.pt"
     #     UpdateTask(pre_model=pre_model)

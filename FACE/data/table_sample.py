@@ -152,7 +152,7 @@ def normalized(data):
     return (data - min) / _range
 
 
-def sampling(data, size, replace):
+def sampling(data: np.ndarray, size: int, replace: bool):
     if not replace and size > data.shape[0]:
         raise ValueError("Size cannot be greater than the number of rows in data when replace is False")
 
@@ -200,7 +200,7 @@ def single_sampling(data, size):
     return sample
 
 
-def data_update(data, size):
+def data_update_(data, size):
     update_data = sampling(data, size)
     return update_data
 
@@ -257,7 +257,7 @@ def loss_test(data, update_data, sample_size, flow):
     return mean_reduction, threshold
 
 
-def JS_test(data, update_data, sample_size, epoch=32):
+def JS_test(data: np.ndarray, update_data: np.ndarray, sample_size: int, epoch=32):
     # assert update_type in ["sample", "single", "permute"], "Update type error!"
     js_start_time = time.time()
     js_divergence = []
