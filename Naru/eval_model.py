@@ -1394,20 +1394,15 @@ def test_for_drift(
             # end2end模式：permute, single, sample三选一
             # 获取数据集路径
             abs_dataset_path = communicator.DatasetPathCommunicator().get()
-            # 读取当前数据集
-            raw_data = np.load(abs_dataset_path).astype(np.float32)  # 原数据，参与计算JS test
-            # 更新数据
-            updater = data_updater.DataUpdater(
-                data=raw_data,
-                sampler=data_updater.create_sampler(
-                    sampler_type=args.data_update,
-                    update_fraction=0.2
-                )
-            )  # 创建DataUpdater
-            updater.update_data()  # 更新数据
-            sampled_data = updater.get_sampled_data()  # 新增的数据，参与计算JS test
-            # 将更新后的数据保存到原路径
-            updater.store_updated_data_to_file(output_path=abs_dataset_path)
+
+            # 更新数据集
+            raw_data, sampled_data = data_updater.DataUpdater.update_dataset_from_file_to_file(
+                data_update_method=args.data_update,
+                update_fraction=0.2,
+                raw_dataset_path=abs_dataset_path,
+                updated_dataset_path=abs_dataset_path
+            )
+
             # 读取更新后的数据
             table = dataset_util.NpyDatasetLoader.load_npy_dataset_from_path(path=abs_dataset_path)
         return table, raw_data, sampled_data

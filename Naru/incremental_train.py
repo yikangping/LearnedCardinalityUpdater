@@ -828,12 +828,17 @@ def InitWeight(m):
         nn.init.normal_(m.weight, std=0.02)
 
 
-def AdaptTask(pre_model, seed=0):
+def AdaptTask(pre_model, new_model_path=None, seed=0, end2end: bool = False):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    # Load data
-    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    # 读取数据集
+    if not end2end:
+        table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    else:
+        abs_dataset_path = communicator.DatasetPathCommunicator().get()
+        table = dataset_util.NpyDatasetLoader.load_npy_dataset_from_path(path=abs_dataset_path)
+        split_indices = communicator.SplitIndicesCommunicator().get()
 
     table_bits = Entropy(
         table,
@@ -1006,8 +1011,12 @@ def AdaptTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_torch_model(model, PATH)
-        pre_model = PATH
+
+        if not end2end:
+            save_torch_model(model, PATH)
+            pre_model = PATH
+        else:
+            save_torch_model(model, new_model_path)
 
 
 def TrainTask(seed=0):
@@ -1170,12 +1179,17 @@ def TransferDataPrepare(train_data, split_indices, update_step):
     return transfer_data
 
 
-def UpdateTask(pre_model, seed=0):
+def UpdateTask(pre_model, new_model_path=None, seed=0, end2end: bool = False):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    # Load dataset
-    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    # 读取数据集
+    if not end2end:
+        table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    else:
+        abs_dataset_path = communicator.DatasetPathCommunicator().get()
+        table = dataset_util.NpyDatasetLoader.load_npy_dataset_from_path(path=abs_dataset_path)
+        split_indices = communicator.SplitIndicesCommunicator().get()
 
     table_bits = Entropy(
         table,
@@ -1350,16 +1364,24 @@ def UpdateTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_torch_model(model, PATH)
-        pre_model = PATH
+        if not end2end:
+            save_torch_model(model, PATH)
+            pre_model = PATH
+        else:
+            save_torch_model(model, new_model_path)
 
 
-def FineTuneTask(pre_model, seed=0):
+def FineTuneTask(pre_model, new_model_path=None, seed=0, end2end: bool = False):
     torch.manual_seed(0)
     np.random.seed(0)
 
-    # Load dataset
-    table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    # 读取数据集
+    if not end2end:
+        table, split_indices = dataset_util.DatasetLoader.load_permuted_dataset(dataset=args.dataset, permute=False)
+    else:
+        abs_dataset_path = communicator.DatasetPathCommunicator().get()
+        table = dataset_util.NpyDatasetLoader.load_npy_dataset_from_path(path=abs_dataset_path)
+        split_indices = communicator.SplitIndicesCommunicator().get()
 
     table_bits = Entropy(
         table,
@@ -1509,8 +1531,11 @@ def FineTuneTask(pre_model, seed=0):
                 "_".join(map(str, fixed_ordering)),
                 annot,
             )
-        save_torch_model(model, PATH)
-        pre_model = PATH
+        if not end2end:
+            save_torch_model(model, PATH)
+            pre_model = PATH
+        else:
+            save_torch_model(model, new_model_path)
 
 
 def DistillTask(pre_model, seed=0):
@@ -1985,7 +2010,7 @@ def main():
     is_end2end = args.end2end == 'true'
 
     if not is_end2end:
-        # 原逻辑
+        # 原逻辑：用3种增量训练方法，训练所有模型
         relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
         absolute_model_paths = get_absolute_path(relative_model_paths)
         model_paths = glob.glob(str(absolute_model_paths))
@@ -1994,9 +2019,17 @@ def main():
             UpdateTask(pre_model=model_path)
             FineTuneTask(pre_model=model_path)
     else:
+        # end2end实验：用1种增量训练方法，训练1个模型
         model_path = communicator.ModelPathCommunicator().get()
-        # TODO:
-        pass
+        new_model_path = model_path  # 保存在原模型的路径下  TODO: 保存在新模型的路径下
+        if args.model_update == "update":
+            UpdateTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+        elif args.model_update == "adapt":
+            AdaptTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+        elif args.model_update == "finetune":
+            FineTuneTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+        else:
+            raise ValueError("model update method not supported")
 
     # TrainTask()
     # BayesCardExp(pre_model="models/00tpcds-12.9MB-model10.410-data13.514-made-resmade-hidden128_128_128_128-emb32-directIo-binaryInone_hotOut-inputNoEmbIfLeq-colmask-10epochs-seed0.pt")

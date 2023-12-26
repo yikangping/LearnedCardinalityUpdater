@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from utils import path_util
+from utils.end2end_utils import communicator
 
 
 class Sampler(ABC):
@@ -116,6 +117,38 @@ class DataUpdater:
     def store_updated_data_to_file(self, output_path: Path):
         # 将self.data保存到output_path
         np.save(output_path, self.updated_data)
+
+    @staticmethod
+    def update_dataset_from_file_to_file(
+            data_update_method: str,
+            update_fraction: float,
+            raw_dataset_path: Path,
+            updated_dataset_path: Path
+    ) -> tuple[np.ndarray, np.ndarray]:
+        # 从原路径读取当前数据集
+        raw_data = np.load(raw_dataset_path).astype(np.float32)  # 原数据
+
+        # 更新数据
+        updater = DataUpdater(
+            data=raw_data,
+            sampler=create_sampler(
+                sampler_type=data_update_method,
+                update_fraction=update_fraction
+            )
+        )  # 创建DataUpdater
+        updater.update_data()  # 执行数据更新
+        sampled_data = updater.get_sampled_data()  # 新增的数据
+
+        # 将更新后的数据保存到新路径
+        updater.store_updated_data_to_file(output_path=updated_dataset_path)
+
+        # 计算并保存landmarks
+        original_data_end = len(raw_data)
+        updated_data_end = original_data_end + len(sampled_data)
+        landmarks = [original_data_end, updated_data_end]
+        communicator.SplitIndicesCommunicator().set(landmarks)  # 保存landmarks到文件
+
+        return raw_data, sampled_data
 
 
 if __name__ == "__main__":

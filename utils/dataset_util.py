@@ -248,12 +248,6 @@ class NpyDatasetLoader:
         return common.CsvTable('default', df, cols)
 
     @staticmethod
-    def load_npy_dataset(dataset_name: str):
-        # 读取数据
-        abs_file_path = get_absolute_path(f"./data/{dataset_name}/{dataset_name}.npy")
-        return NpyDatasetLoader.load_npy_dataset_from_path(path=abs_file_path)
-
-    @staticmethod
     def load_permuted_npy_dataset(dataset_name: str, permute=True):
         # 读取数据
         npy_file_path = f"./data/{dataset_name}/{dataset_name}.npy"
@@ -292,7 +286,8 @@ class DatasetLoader:
         if dataset in ["census", "forest"]:
             table = CsvDatasetLoader.load_csv_dataset(dataset_name=dataset)
         elif dataset in ["bjaq", "power"]:
-            table = NpyDatasetLoader.load_npy_dataset(dataset_name=dataset)
+            abs_path = get_absolute_path(f"./data/{dataset}/{dataset}.npy")
+            table = NpyDatasetLoader.load_npy_dataset_from_path(path=abs_path)
         else:
             raise ValueError(f"Unknown dataset name \"{dataset}\"")
 
@@ -376,5 +371,4 @@ if __name__ == "__main__":
     dataset = "census"
     dir_path = f"./data/{dataset}"
     DatasetConverter.convert_csv_into_npy(dataset_name=dataset)
-    NpyDatasetLoader.load_npy_dataset(dataset_name=dataset)
     pass

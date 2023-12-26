@@ -6,6 +6,7 @@ from utils import path_util
 CURRENT_MODEL_PATH_TXT = './end2end/communicate/model_path.txt'
 CURRENT_DATASET_PATH_TXT = './end2end/communicate/dataset_path.txt'
 CURRENT_IS_DRIFT_TXT = './end2end/communicate/is_drift.txt'
+CURRENT_SPLIT_INDICES_TXT = './end2end/communicate/split_indices.txt'
 
 
 class FileCommunicator:
@@ -75,6 +76,32 @@ class DriftCommunicator(FileCommunicator):
         with open(self.abs_file_path, 'w') as file:
             content = 'true' if is_drift else 'false'
             file.write(content)
+
+
+class CommaSplitArrayCommunicator(FileCommunicator):
+    def __init__(self, file_path: str):
+        super().__init__(file_path)
+
+    def get(self) -> list:
+        """
+        读取txt文件，将字符串分割为数组
+        """
+        with open(self.abs_file_path, 'r') as file:
+            content = file.read()
+        return content.split(',') if content else []
+
+    def set(self, array: list):
+        """
+        将数组转换为字符串并写入txt文件
+        """
+        array_str = ','.join(map(str, array))
+        with open(self.abs_file_path, 'w') as file:
+            file.write(array_str)
+
+
+class SplitIndicesCommunicator(CommaSplitArrayCommunicator):
+    def __init__(self, txt_path: str = CURRENT_SPLIT_INDICES_TXT):
+        super().__init__(txt_path)
 
 
 if __name__ == '__main__':
