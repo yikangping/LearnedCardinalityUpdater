@@ -957,12 +957,17 @@ def Model_Eval(args, end2end: bool = False):
 
         # Other estimators can be appended as well.
 
+        random_seed = 1234
+        # TODO: end2end模式下，随机种子值是否需要变化？若不变，连续的QueryWorkload会有相同的结果
+        # if end2end:
+        #     import random
+        #     random_seed = random.randint(0, 100000)
         if len(estimators):
             RunN(
                 table,
                 cols_to_train,
                 estimators,
-                rng=np.random.RandomState(1234),
+                rng=np.random.RandomState(random_seed),
                 num=args.num_queries,
                 log_every=1,
                 num_filters=None,

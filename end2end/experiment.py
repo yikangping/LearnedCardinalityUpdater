@@ -195,7 +195,12 @@ def main():
     model_update_script_path = path_util.get_absolute_path('./Naru/incremental_train.py')  # 更新模型的脚本
     current_datetime = datetime.now()
     formatted_datetime = current_datetime.strftime("%y%m%d-%H%M")  # 格式化日期和时间为 'yyMMdd-HHmm' 格式
-    output_file_name = f'{formatted_datetime}+{args.dataset}+{args.data_update}+{args.model_update}.txt'
+    output_file_name = (f'{formatted_datetime}+'
+                        f'{args.dataset}+'
+                        f'{args.data_update}+'
+                        f'{args.model_update}+'
+                        f'w{args.num_workload}'
+                        f'.txt')
     output_file_path = path_util.get_absolute_path(f"./end2end/experiment-records/{output_file_name}")  # 实验记录文件路径
     print('Output file path:', output_file_path)
 
