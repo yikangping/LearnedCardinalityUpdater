@@ -1,5 +1,6 @@
 import random
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict
 
@@ -22,9 +23,14 @@ class PythonScriptWorkload(BaseWorkload):
     """
     A workload that runs a python script.
     """
-    def __init__(self, python_script_path: Path, args: Dict[str, str], output_file_path: Path = None):
+    def __init__(
+            self,
+            python_script_path: Path,
+            args: Dict[str, str],
+            output_file_path: Path = None
+    ):
         self.script_path = python_script_path
-        self.args = args
+        self.args = deepcopy(args)  # 使用深拷贝来确保 args 是独立的副本
         self.output_file_path = output_file_path
 
     def execute_workload(self):
@@ -39,7 +45,12 @@ class QueryWorkload(PythonScriptWorkload):
     """
     A workload that queries the model.
     """
-    def __init__(self, script_path: Path, args: Dict[str, str], output_file_path: Path = None):
+    def __init__(
+            self,
+            script_path: Path,
+            args: Dict[str, str],
+            output_file_path: Path = None
+    ):
         args['eval_type'] = 'estimate'
         super().__init__(script_path, args, output_file_path)
 
@@ -48,7 +59,13 @@ class DataUpdateWorkload(PythonScriptWorkload):
     """
     A workload that updates the data & check drift.
     """
-    def __init__(self, script_path: Path, args: Dict[str, str], output_file_path: Path = None):
+
+    def __init__(
+            self,
+            script_path: Path,
+            args: Dict[str, str],
+            output_file_path: Path = None
+    ):
         args['eval_type'] = 'drift'
         super().__init__(script_path, args, output_file_path)
 

@@ -19,6 +19,7 @@ from FACE.data import table_sample
 from end2end import data_updater
 from sqlParser import Parser
 from utils import dataset_util
+from utils.arg_util import add_common_arguments, ArgType
 from utils.end2end_utils import communicator
 from utils.path_util import get_absolute_path, convert_path_to_linux_style
 from utils.torch_util import get_torch_device
@@ -33,11 +34,17 @@ DEVICE = get_torch_device()
 def create_parser():
     parser = argparse.ArgumentParser()
 
+    # 添加通用参数
+    add_common_arguments(parser, [ArgType.DATASET, ArgType.END2END])
+
+    # parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
+
     parser.add_argument(
-        "--end2end",
+        "--eval_type",
         type=str,
-        default="false",
-        help="Whether to run end2end experiment.",
+        choices=['estimate', 'drift'],
+        default="estimate",
+        help="Model evaluation type, estimate or drift",
     )
 
     parser.add_argument(
@@ -47,7 +54,6 @@ def create_parser():
     )
 
     parser.add_argument("--num-queries", type=int, default=50, help="# queries.")
-    parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
     parser.add_argument(
         "--err-csv", type=str, default="results.csv", help="Save result csv to what path?"
     )
@@ -136,14 +142,6 @@ def create_parser():
         type=int,
         default=30000,
         help="Maximum number of partitions of the Maxdiff histogram.",
-    )
-
-    parser.add_argument(
-        "--eval_type",
-        type=str,
-        choices=['estimate', 'drift'],
-        default="estimate",
-        help="Model evaluation type, estimate or drift",
     )
 
     return parser
@@ -792,7 +790,8 @@ def ReportModel(model, blacklist=None):
 
 def SaveEstimators(path, estimators, return_df=False):
     # name, query_dur_ms, errs, est_cards, true_cards
-    results = pd.DataFrame()
+    results_list = []  # 创建一个空列表来存储所有 DataFrame
+
     for est in estimators:
         data = {
             "est": [est.name] * len(est.errs),
@@ -801,9 +800,13 @@ def SaveEstimators(path, estimators, return_df=False):
             "true_card": est.true_cards,
             "query_dur_ms": est.query_dur_ms,
         }
-        results = results.append(pd.DataFrame(data))
+        results_list.append(pd.DataFrame(data))  # 将新的 DataFrame 添加到列表中
+
+    results = pd.concat(results_list, ignore_index=True)  # 使用 concat 合并所有 DataFrame
+
     if return_df:
         return results
+
     results.to_csv(path, index=False)
 
 
@@ -1466,7 +1469,7 @@ def test_for_drift(
 
 def main():
     # 是否运行end2end实验
-    is_end2end = args.end2end == 'true'
+    is_end2end: bool = args.end2end
 
     # 查询负载
     if args.eval_type == "estimate":

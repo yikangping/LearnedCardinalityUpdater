@@ -1,1 +1,1 @@
-./models/new-model-path.pt
+./models/origin-bjaq-3.4MB-model24.504-data13.432-200epochs-seed0.pt

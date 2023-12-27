@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-from typing import Dict
+from typing import Dict, List
 from abc import ABC, abstractmethod
 
 
@@ -9,7 +9,11 @@ class BaseScriptRunner(ABC):
     A base class for script runners.
     """
 
-    def __init__(self, script_path: Path, args: Dict[str, str], output_file_path: Path = None):
+    def __init__(
+            self,
+            script_path: Path, args: Dict[str, str],
+            output_file_path: Path = None
+    ):
         """
         Initialize the BaseScriptRunner with a script path and arguments.
 
@@ -34,6 +38,15 @@ class PythonScriptRunner(BaseScriptRunner):
     A class to run a python script with given arguments using subprocess.
     """
 
+    def _generate_python_script(self) -> List[str]:
+        cmd = ["python", str(self.script_path)]
+        for k, v in self.args.items():
+            if v is None:
+                cmd.append(f"--{k}")
+            else:
+                cmd.append(f"--{k}={v}")
+        return cmd
+
     def run_script(self):
         """
         Execute the python script with the specified arguments using "subprocess.run".
@@ -41,14 +54,16 @@ class PythonScriptRunner(BaseScriptRunner):
         由于 "subprocess.run" 默认是阻塞性的，它会等待启动的进程结束后再继续执行。
         """
         # Construct the command with arguments
-        cmd = ["python", str(self.script_path)] + [f"--{k}={v}" for k, v in self.args.items()]
+        cmd = self._generate_python_script()
         print(f"PythonScriptRunner.run_script -> Running command: {cmd}")
 
-        # Open the output file
+        # Execute the command
         if self.log_file_path:
-            with open(self.log_file_path, 'w') as output_file:
-                # Execute the command using subprocess and redirect output to the file
+            # redirect output to the file
+            with open(self.log_file_path, 'a') as output_file:
+                output_file.write(f"PythonScriptRunner.run_script -> Running command: {cmd}\n")
+                output_file.flush()
                 subprocess.run(cmd, stdout=output_file, stderr=output_file)
+                # output_file.write("\n\n\n")
         else:
-            # Execute the command using subprocess
             subprocess.run(cmd)

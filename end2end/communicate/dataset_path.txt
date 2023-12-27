@@ -1,1 +1,1 @@
-./datasets/new-dataset-path.pt
+./data/bjaq/end2end/bjaq.npy
