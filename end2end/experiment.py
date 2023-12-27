@@ -1,4 +1,7 @@
 import argparse
+import glob
+import os
+import shutil
 import sys
 from pathlib import Path
 from typing import List
@@ -147,20 +150,33 @@ def main():
     workload_script_path = path_util.get_absolute_path('./Naru/eval_model.py')  # 工作负载
     output_file_path = path_util.get_absolute_path('./end2end/experiment-records/record1.txt')  # 实验记录
 
-    # TODO: 获取end2end模型路径
+    # 获取end2end模型路径
     dataset_name = args.dataset
-    init_model_path = f'./models/origin-{dataset_name}*.pt'  # 初始模型
-    # TODO: 匹配模型路径
+    init_model_reg = f'./models/origin-{dataset_name}*.pt'  # 初始模型
+    abs_model_reg: Path = path_util.get_absolute_path(init_model_reg)
+    model_paths = glob.glob(str(abs_model_reg))  # 正则匹配结果
+    if not model_paths:
+        print("No matching model paths found.")
+        return
+    model_path = model_paths[0]  # 取第1个匹配结果
+    print(f"First matching model path: {model_path}")
+    model_filename = os.path.basename(model_path)
+    end2end_model_path = f'./models/{model_filename}'
+    print(f"Model path: {end2end_model_path}")
 
-    # TODO: 获取end2end数据集路径
-    raw_dataset_path = f'./data/{dataset_name}/{dataset_name}.npy'  # 原始数据集
-    init_dataset_path = f'./data/{dataset_name}/end2end/{dataset_name}.npy'  # end2end数据集
-    # TODO: 将原始数据集复制到end2end文件夹下
+    # 获取end2end数据集路径
+    raw_dataset_path = f'./data/{dataset_name}/{dataset_name}.npy'  # 原始数据集路径
+    end2end_dataset_path = f'./data/{dataset_name}/end2end/{dataset_name}.npy'  # end2end数据集路径
+    abs_raw_dataset_path = path_util.get_absolute_path(raw_dataset_path)
+    abs_end2end_dataset_path = path_util.get_absolute_path(end2end_dataset_path)
+    # 将原始数据集复制到end2end文件夹下，如果已存在则覆盖
+    shutil.copy2(src=abs_raw_dataset_path, dst=abs_end2end_dataset_path)
+    print(f"Copied {abs_raw_dataset_path} to {abs_end2end_dataset_path}")
 
     # 使用上下文管理器重定向输出
     with redirect_stdout_to_file(output_file_path, mode='w'):
-        communicator.ModelPathCommunicator().set(init_model_path)  # 设置模型路径
-        communicator.DatasetPathCommunicator().set(init_dataset_path)  # 设置数据集路径
+        communicator.ModelPathCommunicator().set(end2end_model_path)  # 设置模型路径
+        communicator.DatasetPathCommunicator().set(end2end_dataset_path)  # 设置数据集路径
         print("Input arguments =", args)  # 打印参数
 
         # >>> 创建工作负载 <<<

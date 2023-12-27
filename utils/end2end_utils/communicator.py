@@ -34,7 +34,7 @@ class PathCommunicator(FileCommunicator):
         """
         with open(self.abs_file_path, 'r') as file:
             content = file.read()
-        print(f"CUR-{self.prompt}-PATH={content}")
+        print(f"GET-{self.prompt}-PATH={content}")
         abs_path = path_util.get_absolute_path(content)
         return abs_path
 
@@ -44,7 +44,7 @@ class PathCommunicator(FileCommunicator):
         """
         with open(self.abs_file_path, 'w') as file:
             file.write(new_path)
-        print(f"NEW-{self.prompt}-PATH={new_path}")
+        print(f"SET-{self.prompt}-PATH={new_path}")
 
 
 class ModelPathCommunicator(PathCommunicator):
