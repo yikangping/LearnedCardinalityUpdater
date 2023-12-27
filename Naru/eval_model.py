@@ -1377,9 +1377,9 @@ def test_for_drift(
         print("detection threshold = {:.4f}".format(threshold))
         print("test statistic = {:.4f}".format(stat))
         if stat > threshold:
-            return "drifted", t2 - t1
+            return True, t2 - t1
         else:
-            return "no-drift", t2 - t1
+            return False, t2 - t1
 
     def update_data():
         """
@@ -1443,17 +1443,21 @@ def test_for_drift(
             mean, threshold, time_off = offline_phase(
                 table, model, table_bits, simulations=bootstrap, sample_size=sample_size
             )
-            output, time_on = online_phase(
+            drift, time_on = online_phase(
                 table, model, table_bits, mean, threshold, sample_size=sample_size
             )
             print("Offline time = {}\nonline time = {}".format(time_off, time_on))
-            print("Test result: {}".format(output))
-            return False  # TODO: 如何判断是否drift
+            print("Test result: {}".format(drift))
+            return drift
 
         # 漂移检测 - JS test
         if args.drift_test == "js":
-            table_sample.JS_test(data=raw_data, update_data=sampled_data, sample_size=args.sample_size)
-            return False  # TODO: 如何判断是否drift
+            return table_sample.JS_test(
+                data=raw_data,
+                update_data=sampled_data,
+                sample_size=args.sample_size,
+                threshold=0.3
+            )
 
     # 漂移检测
     is_drift = drift_detect()

@@ -257,7 +257,13 @@ def loss_test(data, update_data, sample_size, flow):
     return mean_reduction, threshold
 
 
-def JS_test(data: np.ndarray, update_data: np.ndarray, sample_size: int, epoch=32):
+def JS_test(
+        data: np.ndarray,
+        update_data: np.ndarray,
+        sample_size: int,
+        epoch: int = 32,
+        threshold: float = 0.3
+) -> bool:
     # assert update_type in ["sample", "single", "permute"], "Update type error!"
     js_start_time = time.time()
     js_divergence = []
@@ -278,7 +284,8 @@ def JS_test(data: np.ndarray, update_data: np.ndarray, sample_size: int, epoch=3
     js_running_time = js_end_time - js_start_time
     print("Mean JS divergence: {:.4f}".format(js_mean))
     print("JS devergence running time: {:.4f}s".format(js_running_time))
-    return JS_diver
+
+    return js_mean > threshold
 
 
 def parse_args():
@@ -372,7 +379,7 @@ def main():
         mean_reduction, threshold = loss_test(data, update_data, sample_size, flow=flow)
 
         # print("sample dtype: {}".format(old_sample.dtype))
-        JS_diver = JS_test(data, update_data, sample_size)
+        is_drift = JS_test(data, update_data, sample_size)
         conca_and_save(sampled_file_path, data, update_data)
 
     # # print("data sample: {}".format(input[:5]))
