@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import List
 
 from utils import path_util
 
@@ -88,7 +89,8 @@ class CommaSplitArrayCommunicator(FileCommunicator):
         """
         with open(self.abs_file_path, 'r') as file:
             content = file.read()
-        return content.split(',') if content else []
+        content_list = content.split(',') if content else []
+        return content_list
 
     def set(self, array: list):
         """
@@ -102,6 +104,24 @@ class CommaSplitArrayCommunicator(FileCommunicator):
 class SplitIndicesCommunicator(CommaSplitArrayCommunicator):
     def __init__(self, txt_path: str = CURRENT_SPLIT_INDICES_TXT):
         super().__init__(txt_path)
+
+    def get(self) -> List[int]:
+        """
+        Reads a txt file, splits the string into an array, and attempts to convert each element to an integer.
+        Raises an error if conversion fails.
+        """
+        with open(self.abs_file_path, 'r') as file:
+            content = file.read()
+
+        if not content:
+            return []
+
+        try:
+            content_list = [int(item) for item in content.split(',')]
+        except ValueError:
+            raise ValueError("Conversion to int failed for one or more elements in the list.")
+
+        return content_list
 
 
 if __name__ == '__main__':

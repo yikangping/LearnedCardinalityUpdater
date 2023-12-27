@@ -859,7 +859,7 @@ def Model_Eval(args, end2end: bool = False):
 
     for s in selected_ckpts:
         if args.order is None:
-            reg_pattern = ".*/models/([\D]+)-.+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+).*.pt"
+            reg_pattern = ".*/([\D]+)-.+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+).*.pt"
         else:
             reg_pattern = ".+model([\d\.]+)-data([\d\.]+).+seed([\d\.]+)-order.*.pt"
         z = re.match(reg_pattern, convert_path_to_linux_style(s))
@@ -1419,7 +1419,7 @@ def test_for_drift(
 
     # 更新数据
     table, raw_data, sampled_data = update_data()
-    print("Data updated!")
+    print(f"Data updated!")
 
     def drift_detect() -> bool:
         # 漂移检测 - DDUp

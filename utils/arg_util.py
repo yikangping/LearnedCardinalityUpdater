@@ -10,6 +10,7 @@ class ArgType(Enum):
     DRIFT_TEST = auto()
     END2END = auto()
     EVALUATION_TYPE = auto()
+    MODEL_UPDATE = auto()
 
 
 DICT_FROM_ARG_TO_ALLOWED_ARG_VALS = {
@@ -65,6 +66,12 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
                 choices=['estimate', 'drift'],
                 required=True,
                 help='选择评估类型：estimate, drift'
+            )
+        if arg_type == ArgType.MODEL_UPDATE:
+            parser.add_argument(
+                '--model_update',
+                type=str, choices=['update', 'adapt', 'finetune'],
+                help='模型更新方法：update (drift_test=ddup), adapt (drift_test=js), finetune (baseline)'
             )
 
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Any
 from abc import ABC, abstractmethod
 
 
@@ -11,7 +11,7 @@ class BaseScriptRunner(ABC):
 
     def __init__(
             self,
-            script_path: Path, args: Dict[str, str],
+            script_path: Path, args: Dict[str, Any],
             output_file_path: Path = None
     ):
         """

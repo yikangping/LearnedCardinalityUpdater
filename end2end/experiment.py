@@ -3,11 +3,13 @@ import glob
 import os
 import shutil
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
 from end2end.workload import QueryWorkload, DataUpdateWorkload, WorkloadGenerator, BaseWorkload
-from utils import path_util
+from utils import path_util, log_util
 from utils.arg_util import add_common_arguments, ArgType
 from utils.end2end_utils import communicator
 from utils.end2end_utils.script_runner import PythonScriptRunner
@@ -21,16 +23,10 @@ def parse_args():
         ArgType.DATA_UPDATE,
         ArgType.DATASET,
         ArgType.DEBUG,
-        ArgType.DRIFT_TEST
+        ArgType.DRIFT_TEST,
+        ArgType.MODEL_UPDATE
     ]
     add_common_arguments(parser, arg_types=common_args)
-
-    parser.add_argument(
-        '--model_update',
-        type=str, choices=['update', 'adapt', 'finetune'],
-        required=True,
-        help='模型更新方法：update (drift_test=ddup), adapt (drift_test=js), finetune (baseline)'
-    )
 
     parser.add_argument(
         '--model',
@@ -89,6 +85,7 @@ def create_workloads(
     data_update_workload_args = {
         'data_update': args.data_update,
         'dataset': args.dataset,
+        'drift_test': args.drift_test,
         'end2end': None
     }
     # 定义查询负载
@@ -104,14 +101,25 @@ def create_workloads(
         output_file_path=output_file_path
     )
     # 设置负载权重，根据实际需求修改
+    weight_query = 15
+    weight_data_update = 10
     dict_from_workload_to_weight = {
-        query_workload: 1,
-        date_update_workload: 10,
+        query_workload: weight_query,
+        date_update_workload: weight_data_update,
     }
+    msg = f"Workload weights: query={weight_query}, data-update={weight_data_update}\n"
+    log_util.append_to_file(output_file_path, msg)
+
     # 定义负载生成器
     workload_generator = WorkloadGenerator(workloads=dict_from_workload_to_weight, random_seed=args.random_seed)
+
     # 生成args.num_workload个工作负载
     generated_workloads = [workload_generator.generate() for _ in range(args.num_workload)]
+
+    # 打印生成的工作负载
+    workloads_description = [workload.get_type() for workload in generated_workloads]
+    msg = f"Workloads: {workloads_description}\n"
+    log_util.append_to_file(output_file_path, msg)
 
     return generated_workloads
 
@@ -121,48 +129,79 @@ def run_workloads(
         workloads: List[BaseWorkload],
         model_update_script_path: Path,
         output_file_path: Path
-):
-    with open(output_file_path, 'a') as output_file:
-        # 顺序运行所有工作负载
-        for i, workload in enumerate(workloads):
-            start_message = f"Start workload {i+1}/{len(workloads)}, type: {workload.get_type()}\n"
-            drift_message = f"\n\n\nDrift detected after workload {i + 1}/{len(workloads)}"
-            end_message = f"\nFinish workload {i+1}/{len(workloads)}\n\n\n"
+) -> int:
+    drift_count = 0  # 漂移次数
 
-            print(start_message)
-            output_file.write(start_message)
-            output_file.flush()
+    # 顺序运行所有工作负载
+    for i, workload in enumerate(workloads):
+        start_message = (f"WORKLOAD-START | "
+                         f"Type: {workload.get_type()} | "
+                         f"Progress: {i + 1}/{len(workloads)}\n")
+        drift_message = f"\nDRIFT-DETECTED after {i + 1}-th workload\n"
 
-            # 运行当前工作负载
-            workload.execute_workload()
+        # 打印工作负载开始信息
+        log_util.append_to_file(output_file_path, start_message)
 
-            # 若为DataUpdateWorkload，则需要检测漂移；若漂移，则更新模型(incremental_train.py)
-            if isinstance(workload, DataUpdateWorkload):
-                is_drift = communicator.DriftCommunicator().get()
-                if is_drift:
-                    print(drift_message)
-                    output_file.write(drift_message)
-                    output_file.flush()
-                    PythonScriptRunner(
-                        script_path=model_update_script_path,
-                        args=args,
-                        output_file_path=output_file_path
-                    ).run_script()
+        # 运行当前工作负载
+        workload_start_time = time.time()
+        workload.execute_workload()
+        workload_time = time.time() - workload_start_time
 
-            print(end_message)
-            output_file.write(end_message)
-            output_file.flush()
+        # 若为DataUpdateWorkload，则需要检测漂移；若漂移，则更新模型(incremental_train.py)
+        model_update_time = 0
+        if isinstance(workload, DataUpdateWorkload):
+            is_drift = communicator.DriftCommunicator().get()
+            if is_drift:
+                drift_count += 1
+                # 打印漂移检测信息
+                log_util.append_to_file(output_file_path, drift_message)
+
+                # 运行模型更新脚本
+                incremental_train_args = {
+                    'dataset': args.dataset,
+                    'end2end': None,
+                    'model_update': args.model_update
+                }
+                model_update_start_time = time.time()
+                PythonScriptRunner(
+                    script_path=model_update_script_path,
+                    args=incremental_train_args,
+                    output_file_path=output_file_path
+                ).run_script()
+                model_update_time = time.time() - model_update_start_time
+
+        # 记录工作负载时间和模型更新时间
+        end_message = (f"\nWORKLOAD-FINISHED | "
+                       f"Type: {workload.get_type()} | "
+                       f"Progress: {i + 1}/{len(workloads)} | "
+                       f"Workload-time: {workload_time:.6f} | "  # 将工作负载时间精确到小数点后六位
+                       f"Model-update-time: {model_update_time:.6f}\n\n\n")  # 将模型更新时间精确到小数点后六位
+
+        # 打印工作负载结束信息
+        log_util.append_to_file(output_file_path, end_message)
+
+    return drift_count
 
 
 def main():
+    start_time = time.time()
+
     # 提取参数
     args = parse_args()
     validate_argument(args)
 
     # 定义文件路径
-    workload_script_path = path_util.get_absolute_path('./Naru/eval_model.py')  # 工作负载
-    model_update_script_path = path_util.get_absolute_path('./Naru/incremental_train.py')  # 更新模型
-    output_file_path = path_util.get_absolute_path('./end2end/experiment-records/record1.txt')  # 实验记录
+    workload_script_path = path_util.get_absolute_path('./Naru/eval_model.py')  # 生成工作负载的脚本
+    model_update_script_path = path_util.get_absolute_path('./Naru/incremental_train.py')  # 更新模型的脚本
+    current_datetime = datetime.now()
+    formatted_datetime = current_datetime.strftime("%y%m%d-%H%M")  # 格式化日期和时间为 'yyMMdd-HHmm' 格式
+    output_file_name = f'{formatted_datetime}+{args.dataset}+{args.data_update}+{args.model_update}.txt'
+    output_file_path = path_util.get_absolute_path(f"./end2end/experiment-records/{output_file_name}")  # 实验记录文件路径
+    print('Output file path:', output_file_path)
+
+    # 打印实验参数
+    msg = f"Input arguments = {args}\n"
+    log_util.append_to_file(output_file_path, msg)
 
     # 获取end2end模型路径
     dataset_name = args.dataset
@@ -173,46 +212,53 @@ def main():
         print("No matching model paths found.")
         return
     model_path = model_paths[0]  # 取第1个匹配结果
-    print(f"First matching model path: {model_path}")
-    model_filename = os.path.basename(model_path)
-    end2end_model_path = f'./models/{model_filename}'
-    print(f"Model path: {end2end_model_path}")
+    src_model_filename = os.path.basename(model_path)
+    src_model_path = f'./models/{src_model_filename}'
+    print(f"Source Model path: {src_model_path}")
+    # 将原始模型复制到end2end文件夹下，如果已存在则覆盖
+    end2end_model_path = f'./models/end2end/{src_model_filename}'  # end2end模型路径
+    abs_src_model_path = path_util.get_absolute_path(src_model_path)
+    abs_end2end_model_path = path_util.get_absolute_path(end2end_model_path)
+    shutil.copy2(src=abs_src_model_path, dst=abs_end2end_model_path)
 
     # 获取end2end数据集路径
-    raw_dataset_path = f'./data/{dataset_name}/{dataset_name}.npy'  # 原始数据集路径
+    src_dataset_path = f'./data/{dataset_name}/{dataset_name}.npy'  # 原始数据集路径
     end2end_dataset_path = f'./data/{dataset_name}/end2end/{dataset_name}.npy'  # end2end数据集路径
-    abs_raw_dataset_path = path_util.get_absolute_path(raw_dataset_path)
+    abs_src_dataset_path = path_util.get_absolute_path(src_dataset_path)
     abs_end2end_dataset_path = path_util.get_absolute_path(end2end_dataset_path)
     # 将原始数据集复制到end2end文件夹下，如果已存在则覆盖
-    shutil.copy2(src=abs_raw_dataset_path, dst=abs_end2end_dataset_path)
-    print(f"Copied {abs_raw_dataset_path} to {abs_end2end_dataset_path}")
+    shutil.copy2(src=abs_src_dataset_path, dst=abs_end2end_dataset_path)
 
-    with open(output_file_path, 'a') as output_file:
-        communicator.ModelPathCommunicator().set(end2end_model_path)  # 设置模型路径
-        communicator.DatasetPathCommunicator().set(end2end_dataset_path)  # 设置数据集路径
+    # 设置end2end模型路径和end2end数据集路径
+    log_util.append_to_file(output_file_path, f"MODEL-PATH={abs_end2end_model_path}\n")
+    log_util.append_to_file(output_file_path, f"DATASET-PATH={abs_end2end_dataset_path}\n")
+    communicator.ModelPathCommunicator().set(end2end_model_path)  # 设置end2end模型路径
+    communicator.DatasetPathCommunicator().set(end2end_dataset_path)  # 设置end2end数据集路径
 
-        # 打印实验参数
-        msg = f"Input arguments = {args}\n\n"
-        print(msg)
-        output_file.write(msg)
-        output_file.flush()
+    # >>> 创建工作负载 <<<
+    generated_workloads: List[BaseWorkload] = create_workloads(
+        args=args,
+        workload_script_path=workload_script_path,
+        output_file_path=output_file_path
+    )
 
-        # >>> 创建工作负载 <<<
-        generated_workloads: List[BaseWorkload] = create_workloads(
-            args=args,
-            workload_script_path=workload_script_path,
-            output_file_path=output_file_path
-        )
+    log_util.append_to_file(output_file_path, "\n\n\n")
 
-        # >>> 运行工作负载 <<<
-        run_workloads(
-            args=args,
-            workloads=generated_workloads,
-            model_update_script_path=model_update_script_path,
-            output_file_path=output_file_path
-        )
+    # >>> 运行工作负载 <<<
+    drift_count = run_workloads(
+        args=args,
+        workloads=generated_workloads,
+        model_update_script_path=model_update_script_path,
+        output_file_path=output_file_path
+    )
 
-    print('Experiment Finished')
+    # >>> 打印实验总结 <<<
+    experiment_summary = (f"\n\n\n"
+                          f"Experiment Summary: "
+                          f"#drift={drift_count} | "
+                          f"total-time={time.time() - start_time:.6f}"
+                          f"\n")
+    log_util.append_to_file(output_file_path, experiment_summary)
 
 
 if __name__ == "__main__":

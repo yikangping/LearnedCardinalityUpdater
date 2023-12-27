@@ -1,1 +1,1 @@
-./data/bjaq/end2end/bjaq.npy
+./data/forest/end2end/forest.npy

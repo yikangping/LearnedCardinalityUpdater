@@ -5,6 +5,7 @@ import glob
 import os
 import time
 from itertools import cycle
+from typing import List
 
 import higher
 import numpy as np
@@ -16,6 +17,7 @@ import common
 import made
 import transformer
 from utils import dataset_util
+from utils.arg_util import add_common_arguments, ArgType
 from utils.end2end_utils import communicator
 from utils.model_util import save_torch_model
 from utils.path_util import get_absolute_path
@@ -28,8 +30,16 @@ DEVICE = get_torch_device()
 def create_parser():
     parser = argparse.ArgumentParser()
 
+    # 添加通用参数
+    common_args: List[ArgType] = [
+        ArgType.DATASET,
+        ArgType.END2END,
+        ArgType.MODEL_UPDATE
+    ]
+    add_common_arguments(parser, arg_types=common_args)
+
     # Training.
-    parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
+    # parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
     parser.add_argument("--num-gpus", type=int, default=0, help="#gpus.")
     parser.add_argument("--bs", type=int, default=1024, help="Batch size.")
     parser.add_argument(
@@ -1162,9 +1172,9 @@ def TrainTask(seed=0):
     save_torch_model(model, PATH)
 
 
-def TransferDataPrepare(train_data, split_indices, update_step):
+def TransferDataPrepare(train_data, split_indices: List[int], update_step):
     transfer_data = copy.deepcopy(train_data)
-    tuples1 = transfer_data.tuples[: split_indices[0]]
+    tuples1 = transfer_data.tuples[:split_indices[0]]
     rndindices = torch.randperm(len(tuples1))[:10000]
     transfer_data.tuples = tuples1[rndindices]  # 从原始数据中随机抽取样本放进迁移数据集
 
@@ -2006,10 +2016,7 @@ def BayesCardExp(pre_model=None, seed=0):
 
 
 def main():
-    # 是否运行end2end实验
-    is_end2end = args.end2end == 'true'
-
-    if not is_end2end:
+    if not args.end2end:
         # 原逻辑：用3种增量训练方法，训练所有模型
         relative_model_paths = "./models/origin-{}*MB-model*-data*-*epochs-seed*.pt".format(args.dataset)
         absolute_model_paths = get_absolute_path(relative_model_paths)
@@ -2023,11 +2030,17 @@ def main():
         model_path = communicator.ModelPathCommunicator().get()
         new_model_path = model_path  # 保存在原模型的路径下  TODO: 保存在新模型的路径下
         if args.model_update == "update":
+            print("UpdateTask - START")
             UpdateTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+            print("UpdateTask - END")
         elif args.model_update == "adapt":
+            print("AdaptTask - START")
             AdaptTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+            print("AdaptTask - END")
         elif args.model_update == "finetune":
+            print("FineTuneTask - START")
             FineTuneTask(pre_model=model_path, new_model_path=new_model_path, end2end=True)
+            print("FineTuneTask - END")
         else:
             raise ValueError("model update method not supported")
 

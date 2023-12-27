@@ -133,7 +133,7 @@ class DataUpdater:
             updated_dataset_path: Path
     ) -> tuple[np.ndarray, np.ndarray]:
         # 从原路径读取当前数据集
-        raw_data = np.load(raw_dataset_path).astype(np.float32)  # 原数据
+        raw_data = np.load(raw_dataset_path, allow_pickle=True)  # 原数据
 
         # 更新数据
         updater = DataUpdater(
