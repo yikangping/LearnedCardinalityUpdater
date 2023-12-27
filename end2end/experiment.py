@@ -146,11 +146,21 @@ def main():
     # 定义文件路径
     workload_script_path = path_util.get_absolute_path('./Naru/eval_model.py')  # 工作负载
     output_file_path = path_util.get_absolute_path('./end2end/experiment-records/record1.txt')  # 实验记录
-    init_model_path = './models/origin-census-22.5MB-model26.689-data14.989-300epochs-seed0.pt'  # 初始模型
+
+    # TODO: 获取end2end模型路径
+    dataset_name = args.dataset
+    init_model_path = f'./models/origin-{dataset_name}*.pt'  # 初始模型
+    # TODO: 匹配模型路径
+
+    # TODO: 获取end2end数据集路径
+    raw_dataset_path = f'./data/{dataset_name}/{dataset_name}.npy'  # 原始数据集
+    init_dataset_path = f'./data/{dataset_name}/end2end/{dataset_name}.npy'  # end2end数据集
+    # TODO: 将原始数据集复制到end2end文件夹下
 
     # 使用上下文管理器重定向输出
     with redirect_stdout_to_file(output_file_path, mode='w'):
         communicator.ModelPathCommunicator().set(init_model_path)  # 设置模型路径
+        communicator.DatasetPathCommunicator().set(init_dataset_path)  # 设置数据集路径
         print("Input arguments =", args)  # 打印参数
 
         # >>> 创建工作负载 <<<
