@@ -18,31 +18,18 @@ def parse_args():
 
     # 添加通用参数
     common_args: List[ArgType] = [
+        ArgType.DATA_UPDATE,
         ArgType.DATASET,
-        ArgType.DEBUG
+        ArgType.DEBUG,
+        ArgType.DRIFT_TEST
     ]
     add_common_arguments(parser, arg_types=common_args)
-
-    parser.add_argument(
-        '--drift_test',
-        type=str,
-        choices=['js', 'ddup'],
-        required=True,
-        help='漂移测试方法：js (JS-divergence), ddup'
-    )
 
     parser.add_argument(
         '--model_update',
         type=str, choices=['update', 'adapt', 'finetune'],
         required=True,
         help='模型更新方法：update (drift_test=ddup), adapt (drift_test=js), finetune (baseline)'
-    )
-
-    parser.add_argument(
-        '--data_update', type=str,
-        choices=['permute-ddup', 'permute', 'sample', 'single'],
-        required=True,
-        help='数据更新方法：permute (DDUp), sample (FACE), permute (FACE), single (our)'
     )
 
     parser.add_argument(
@@ -95,29 +82,30 @@ def create_workloads(
         workload_script_path: Path,
         output_file_path: Path = None
 ) -> List[BaseWorkload]:
-    workload_args = {
-        # 'data_update': args.data_update,
+    query_workload_args = {
         'dataset': args.dataset,
-        # 'drift_test': args.drift_test,
         'end2end': None,
-        # 'model': args.model,
-        # 'model_update': args.model_update,
+    }
+    data_update_workload_args = {
+        'data_update': args.data_update,
+        'dataset': args.dataset,
+        'end2end': None
     }
     # 定义查询负载
     query_workload = QueryWorkload(
-        args=workload_args,
+        args=query_workload_args,
         script_path=workload_script_path,
         output_file_path=output_file_path
     )
     # 定义数据更新负载
     date_update_workload = DataUpdateWorkload(
-        args=workload_args,
+        args=data_update_workload_args,
         script_path=workload_script_path,
         output_file_path=output_file_path
     )
     # 设置负载权重，根据实际需求修改
     dict_from_workload_to_weight = {
-        query_workload: 10,
+        query_workload: 1,
         date_update_workload: 10,
     }
     # 定义负载生成器
@@ -138,6 +126,9 @@ def run_workloads(
         # 顺序运行所有工作负载
         for i, workload in enumerate(workloads):
             start_message = f"Start workload {i+1}/{len(workloads)}, type: {workload.get_type()}\n"
+            drift_message = f"\n\n\nDrift detected after workload {i + 1}/{len(workloads)}"
+            end_message = f"\nFinish workload {i+1}/{len(workloads)}\n\n\n"
+
             print(start_message)
             output_file.write(start_message)
             output_file.flush()
@@ -149,13 +140,15 @@ def run_workloads(
             if isinstance(workload, DataUpdateWorkload):
                 is_drift = communicator.DriftCommunicator().get()
                 if is_drift:
+                    print(drift_message)
+                    output_file.write(drift_message)
+                    output_file.flush()
                     PythonScriptRunner(
                         script_path=model_update_script_path,
                         args=args,
                         output_file_path=output_file_path
                     ).run_script()
 
-            end_message = f"\nFinish workload {i+1}/{len(workloads)}\n\n\n"
             print(end_message)
             output_file.write(end_message)
             output_file.flush()

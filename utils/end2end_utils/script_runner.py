@@ -61,7 +61,7 @@ class PythonScriptRunner(BaseScriptRunner):
         if self.log_file_path:
             # redirect output to the file
             with open(self.log_file_path, 'a') as output_file:
-                output_file.write(f"PythonScriptRunner.run_script -> Running command: {cmd}\n")
+                output_file.write(f"Going to run: {cmd}\n")
                 output_file.flush()
                 subprocess.run(cmd, stdout=output_file, stderr=output_file)
                 # output_file.write("\n\n\n")

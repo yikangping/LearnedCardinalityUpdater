@@ -4,8 +4,10 @@ from typing import List
 
 
 class ArgType(Enum):
+    DATA_UPDATE = auto()
     DATASET = auto()
     DEBUG = auto()
+    DRIFT_TEST = auto()
     END2END = auto()
     EVALUATION_TYPE = auto()
 
@@ -21,6 +23,12 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
     根据提供的枚举值列表向解析器添加参数。
     """
     for arg_type in arg_types:
+        if arg_type == ArgType.DATA_UPDATE:
+            parser.add_argument(
+                '--data_update', type=str,
+                choices=['permute-opt', 'permute', 'sample', 'single'],
+                help='数据更新方法：permute (DDUp), sample (FACE), permute (FACE), single (our)'
+            )
         if arg_type == ArgType.DATASET:
             parser.add_argument(
                 '--dataset',
@@ -29,7 +37,6 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
                 required=True,
                 help='选择数据集：bjaq, census, forest, power'
             )
-
         if arg_type == ArgType.DEBUG:
             parser.add_argument(
                 '--debug',
@@ -37,7 +44,13 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
                 default=False,
                 help='启用调试模式'
             )
-
+        if arg_type == ArgType.DRIFT_TEST:
+            parser.add_argument(
+                '--drift_test',
+                type=str,
+                choices=['js', 'ddup'],
+                help='漂移测试方法：js (JS-divergence), ddup'
+            )
         if arg_type == ArgType.END2END:
             parser.add_argument(
                 '--end2end',
@@ -45,7 +58,6 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
                 default=False,
                 help='启用端到端实验'
             )
-
         if arg_type == ArgType.EVALUATION_TYPE:
             parser.add_argument(
                 '--eval_type',
@@ -54,7 +66,6 @@ def add_common_arguments(parser: argparse.ArgumentParser, arg_types: List[ArgTyp
                 required=True,
                 help='选择评估类型：estimate, drift'
             )
-
 
 
 def validate_argument(arg_type: ArgType, arg_val: str):

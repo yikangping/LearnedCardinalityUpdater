@@ -63,18 +63,26 @@ class PermuteOptimizedSampler(Sampler):
 class SingleSamplingSampler(Sampler):
     def sample(self, data: np.ndarray):
         self.get_update_size(data)
+        print("SingleSample - START")
+
         idx = np.random.randint(data.shape[0])
         sample_idx = [idx] * self.update_size
         sample = data[sample_idx]
+
+        print("SingleSample - END")
         return sample
 
 
 class SamplingSampler(Sampler):
     def sample(self, data: np.ndarray):
         self.get_update_size(data)
+        print("Sample - START")
+
         sample_idx = np.random.choice(range(data.shape[0]), size=self.update_size, replace=True)
         sample_idx = np.sort(sample_idx)
         sample = data[sample_idx]
+
+        print("Sample - END")
         return sample
 
 
@@ -85,14 +93,13 @@ def create_sampler(
 ) -> Sampler:
     if sampler_type == "sample":
         return SamplingSampler(update_fraction=update_fraction, update_size=update_size)
-    elif sampler_type == "permute":
+    if sampler_type == "permute":
         return PermuteSampler(update_fraction=update_fraction, update_size=update_size)
-    elif sampler_type == "permute-opt":
+    if sampler_type == "permute-opt":
         return PermuteOptimizedSampler(update_fraction=update_fraction, update_size=update_size)
-    elif sampler_type == "single":
+    if sampler_type == "single":
         return SingleSamplingSampler(update_fraction=update_fraction, update_size=update_size)
-    else:
-        raise ValueError(f"Unknown sampler type: {sampler_type}")
+    raise ValueError(f"Unknown sampler type: {sampler_type}")
 
 
 class DataUpdater:

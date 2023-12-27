@@ -6,6 +6,7 @@ import os
 import pickle
 import re
 import time
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -35,7 +36,13 @@ def create_parser():
     parser = argparse.ArgumentParser()
 
     # 添加通用参数
-    add_common_arguments(parser, [ArgType.DATASET, ArgType.END2END])
+    common_args: List[ArgType] = [
+        ArgType.DATA_UPDATE,
+        ArgType.DATASET,
+        ArgType.DRIFT_TEST,
+        ArgType.END2END
+    ]
+    add_common_arguments(parser, arg_types=common_args)
 
     # parser.add_argument("--dataset", type=str, default="census", help="Dataset.")
 
@@ -1412,6 +1419,7 @@ def test_for_drift(
 
     # 更新数据
     table, raw_data, sampled_data = update_data()
+    print("Data updated!")
 
     def drift_detect() -> bool:
         # 漂移检测 - DDUp
@@ -1464,6 +1472,7 @@ def test_for_drift(
 
     # 漂移检测
     is_drift = drift_detect()
+    print(f"Drift detection: {is_drift}")
     communicator.DriftCommunicator().set(is_drift=is_drift)  # 将结果写入txt文件
 
 
