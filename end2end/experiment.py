@@ -11,7 +11,7 @@ from typing import List
 from end2end.workload import QueryWorkload, DataUpdateWorkload, WorkloadGenerator, BaseWorkload
 from utils import path_util, log_util
 from utils.arg_util import add_common_arguments, ArgType
-from utils.end2end_utils import communicator
+from utils.end2end_utils import communicator, log_parser
 from utils.end2end_utils.script_runner import PythonScriptRunner
 
 
@@ -95,7 +95,7 @@ def create_workloads(
         output_file_path=output_file_path
     )
     # 定义数据更新负载
-    date_update_workload = DataUpdateWorkload(
+    data_update_workload = DataUpdateWorkload(
         args=data_update_workload_args,
         script_path=workload_script_path,
         output_file_path=output_file_path
@@ -105,7 +105,7 @@ def create_workloads(
     weight_data_update = 10
     dict_from_workload_to_weight = {
         query_workload: weight_query,
-        date_update_workload: weight_data_update,
+        data_update_workload: weight_data_update,
     }
     msg = f"Workload weights: query={weight_query}, data-update={weight_data_update}\n"
     log_util.append_to_file(output_file_path, msg)
@@ -205,8 +205,7 @@ def main():
     print('Output file path:', output_file_path)
 
     # 打印实验参数
-    msg = f"Input arguments = {args}\n"
-    log_util.append_to_file(output_file_path, msg)
+    log_util.append_to_file(output_file_path, f"Input arguments = {args}\n")
 
     # 获取end2end模型路径
     dataset_name = args.dataset
@@ -234,9 +233,11 @@ def main():
     # 将原始数据集复制到end2end文件夹下，如果已存在则覆盖
     shutil.copy2(src=abs_src_dataset_path, dst=abs_end2end_dataset_path)
 
-    # 设置end2end模型路径和end2end数据集路径
+    # 记录日志
     log_util.append_to_file(output_file_path, f"MODEL-PATH={abs_end2end_model_path}\n")
     log_util.append_to_file(output_file_path, f"DATASET-PATH={abs_end2end_dataset_path}\n")
+
+    # 设置end2end模型路径和end2end数据集路径
     communicator.ModelPathCommunicator().set(end2end_model_path)  # 设置end2end模型路径
     communicator.DatasetPathCommunicator().set(end2end_dataset_path)  # 设置end2end数据集路径
 
@@ -247,6 +248,7 @@ def main():
         output_file_path=output_file_path
     )
 
+    # 记录日志
     log_util.append_to_file(output_file_path, "\n\n\n")
 
     # >>> 运行工作负载 <<<
@@ -257,13 +259,16 @@ def main():
         output_file_path=output_file_path
     )
 
-    # >>> 打印实验总结 <<<
+    # 打印实验总结
     experiment_summary = (f"\n\n\n"
                           f"Experiment Summary: "
                           f"#drift={drift_count} | "
                           f"total-time={time.time() - start_time:.6f}"
                           f"\n")
     log_util.append_to_file(output_file_path, experiment_summary)
+
+    # 整理实验记录
+    log_parser.parse_experiment_records()
 
 
 if __name__ == "__main__":

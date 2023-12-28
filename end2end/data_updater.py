@@ -17,8 +17,11 @@ class Sampler(ABC):
         self.update_size = update_size
 
     def get_update_size(self, data: np.ndarray):
+        """
+        若有指定 update_size，则直接返回；否则根据 update_fraction 计算 update_size
+        """
         if self.update_size:
-            return
+            return self.update_size
         data_size = data.shape[0]
         self.update_size = int(data_size * self.update_fraction)
         return self.update_size
@@ -128,9 +131,10 @@ class DataUpdater:
     @staticmethod
     def update_dataset_from_file_to_file(
             data_update_method: str,
-            update_fraction: float,
             raw_dataset_path: Path,
-            updated_dataset_path: Path
+            updated_dataset_path: Path,
+            update_fraction: float = None,
+            update_size: int = None
     ) -> tuple[np.ndarray, np.ndarray]:
         # 从原路径读取当前数据集
         raw_data = np.load(raw_dataset_path, allow_pickle=True)  # 原数据
@@ -140,7 +144,8 @@ class DataUpdater:
             data=raw_data,
             sampler=create_sampler(
                 sampler_type=data_update_method,
-                update_fraction=update_fraction
+                update_fraction=update_fraction,
+                update_size=update_size
             )
         )  # 创建DataUpdater
         updater.update_data()  # 执行数据更新

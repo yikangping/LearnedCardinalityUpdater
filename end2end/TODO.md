@@ -55,3 +55,11 @@ incremental_train.py 对应检测到drift后的模型更新
 
 ### 输出
 展示运行效果，存到文件里
+
+
+# 更新
+对于forest
+每次新增50000左右，固定
+
+对于QueryWorkload
+统计origin-forest_43.843 	max: 83.0000	99th: 66.6667	95th: 3.3958	median: 1.0327	mean: 3.8793

@@ -537,8 +537,9 @@ def Query(
     pprint()
 
 
-def ReportEsts(estimators):
+def ReportEsts(estimators: list) -> list:
     v = -1
+    errs_list = []
     for est in estimators:
         print("{} \tmax: {:.4f}\t99th: {:.4f}\t95th: {:.4f}\tmedian: {:.4f}\tmean: {:.4f}".format(est.name,
                                                                                                   np.max(est.errs),
@@ -550,7 +551,9 @@ def ReportEsts(estimators):
                                                                                                               0.5),
                                                                                                   np.mean(est.errs)))
         v = max(v, np.max(est.errs))
-    return v
+        print(f"ReportEsts: {est.errs}")
+        errs_list.append(est.errs)
+    return errs_list
 
 
 def RunN(
@@ -612,9 +615,9 @@ def RunN(
             oracle_est=oracle_est,
         )
 
-    max_err = ReportEsts(estimators)
+    errs_list = ReportEsts(estimators)
 
-    print("max_err", max_err)
+    # print("max_err", max_err)
 
     return False
 
@@ -959,9 +962,9 @@ def Model_Eval(args, end2end: bool = False):
 
         random_seed = 1234
         # TODO: end2end模式下，随机种子值是否需要变化？若不变，连续的QueryWorkload会有相同的结果
-        # if end2end:
-        #     import random
-        #     random_seed = random.randint(0, 100000)
+        if end2end:
+            import random
+            random_seed = random.randint(0, 100000)
         if len(estimators):
             RunN(
                 table,
@@ -1300,6 +1303,7 @@ def test_for_drift(
 ):
     """
     数据更新 + 漂移检测
+    bootstrap, sample_size不用改
     """
     torch.manual_seed(0)
     np.random.seed(0)
@@ -1396,7 +1400,7 @@ def test_for_drift(
         else:
             return False, t2 - t1
 
-    def update_data():
+    def data_update():
         """
         数据更新
         """
@@ -1413,7 +1417,8 @@ def test_for_drift(
             # 更新数据集
             raw_data, sampled_data = data_updater.DataUpdater.update_dataset_from_file_to_file(
                 data_update_method=args.data_update,
-                update_fraction=0.2,
+                update_fraction=None,  # TODO: 每次更新的比例
+                update_size=10000,  # TODO: 每次更新的数量的绝对值
                 raw_dataset_path=abs_dataset_path,
                 updated_dataset_path=abs_dataset_path
             )
@@ -1423,7 +1428,7 @@ def test_for_drift(
         return table, raw_data, sampled_data
 
     # 更新数据
-    table, raw_data, sampled_data = update_data()
+    table, raw_data, sampled_data = data_update()
     print(f"Data updated!")
 
     def drift_detect() -> bool:
@@ -1462,7 +1467,7 @@ def test_for_drift(
             drift, time_on = online_phase(
                 table, model, table_bits, mean, threshold, sample_size=sample_size
             )
-            print("Offline time = {}\nonline time = {}".format(time_off, time_on))
+            print("Offline time = {}\nOnline time = {}".format(time_off, time_on))
             print("Test result: {}".format(drift))
             return drift
 
@@ -1471,8 +1476,8 @@ def test_for_drift(
             return table_sample.JS_test(
                 data=raw_data,
                 update_data=sampled_data,
-                sample_size=args.sample_size,
-                threshold=0.3
+                sample_size=10000,  # TODO: 该值待定
+                threshold=0.3  # TODO: 该值待定
             )
 
     # 漂移检测
