@@ -34,6 +34,7 @@ def parse_experiment_records(
         start_words = [
             "Input arguments",
             "Experiment Summary",
+            "Mean JS divergence",
             "WORKLOAD-FINISHED",
             "ReportEsts",
         ]
