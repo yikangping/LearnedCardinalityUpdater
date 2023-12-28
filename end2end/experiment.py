@@ -114,7 +114,8 @@ def create_workloads(
     workload_generator = WorkloadGenerator(workloads=dict_from_workload_to_weight, random_seed=args.random_seed)
 
     # 生成args.num_workload个工作负载
-    generated_workloads = [workload_generator.generate() for _ in range(args.num_workload)]
+    # 第1个工作负载为查询负载，其余为随机选取
+    generated_workloads = [query_workload] + [workload_generator.generate() for _ in range(args.num_workload - 1)]
 
     # 打印生成的工作负载
     workloads_description = [workload.get_type() for workload in generated_workloads]
@@ -195,11 +196,11 @@ def main():
     model_update_script_path = path_util.get_absolute_path('./Naru/incremental_train.py')  # 更新模型的脚本
     current_datetime = datetime.now()
     formatted_datetime = current_datetime.strftime("%y%m%d-%H%M")  # 格式化日期和时间为 'yyMMdd-HHmm' 格式
-    output_file_name = (f'{formatted_datetime}+'
-                        f'{args.dataset}+'
-                        f'{args.data_update}+'
-                        f'{args.model_update}+'
-                        f'w{args.num_workload}'
+    output_file_name = (f'{args.dataset}+'  # 数据集
+                        f'{args.model_update}+'  # 模型更新方式(adapt/update)
+                        f'{args.data_update}+'  # 数据更新方式(single/permute/sample)
+                        f'wl{args.num_workload}+'  # 工作负载数量
+                        f't{formatted_datetime}'   # 实验时间
                         f'.txt')
     output_file_path = path_util.get_absolute_path(f"./end2end/experiment-records/{output_file_name}")  # 实验记录文件路径
     print('Output file path:', output_file_path)
@@ -237,9 +238,10 @@ def main():
     log_util.append_to_file(output_file_path, f"MODEL-PATH={abs_end2end_model_path}\n")
     log_util.append_to_file(output_file_path, f"DATASET-PATH={abs_end2end_dataset_path}\n")
 
-    # 设置end2end模型路径和end2end数据集路径
+    # 设置communicator
     communicator.ModelPathCommunicator().set(end2end_model_path)  # 设置end2end模型路径
     communicator.DatasetPathCommunicator().set(end2end_dataset_path)  # 设置end2end数据集路径
+    communicator.RandomSeedCommunicator().set(0)  # 设置初始随机种子为0
 
     # >>> 创建工作负载 <<<
     generated_workloads: List[BaseWorkload] = create_workloads(

@@ -961,10 +961,10 @@ def Model_Eval(args, end2end: bool = False):
         # Other estimators can be appended as well.
 
         random_seed = 1234
-        # TODO: end2end模式下，随机种子值是否需要变化？若不变，连续的QueryWorkload会有相同的结果
+        # end2end模式下，随机种子值需要变化
         if end2end:
-            import random
-            random_seed = random.randint(0, 100000)
+            random_seed = communicator.RandomSeedCommunicator().get()  # 从文件读取random_seed
+            communicator.RandomSeedCommunicator().update()  # 更新random_seed
         if len(estimators):
             RunN(
                 table,
@@ -1477,7 +1477,7 @@ def test_for_drift(
                 data=raw_data,
                 update_data=sampled_data,
                 sample_size=10000,  # TODO: 该值待定
-                threshold=0.3  # TODO: 该值待定
+                threshold=0.127  # TODO: 该值待定
             )
 
     # 漂移检测

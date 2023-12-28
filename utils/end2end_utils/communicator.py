@@ -8,6 +8,7 @@ CURRENT_MODEL_PATH_TXT = './end2end/communicate/model_path.txt'
 CURRENT_DATASET_PATH_TXT = './end2end/communicate/dataset_path.txt'
 CURRENT_IS_DRIFT_TXT = './end2end/communicate/is_drift.txt'
 CURRENT_SPLIT_INDICES_TXT = './end2end/communicate/split_indices.txt'
+CURRENT_RANDOM_SEED_TXT = './end2end/communicate/random_seed.txt'
 
 
 class FileCommunicator:
@@ -22,6 +23,26 @@ class FileCommunicator:
     def set(self, content: str):
         with open(self.abs_file_path, 'w') as file:
             file.write(content)
+
+
+class RandomSeedCommunicator:
+    def __init__(self, txt_path: str = CURRENT_RANDOM_SEED_TXT):
+        self.abs_txt_path = path_util.get_absolute_path(txt_path)
+
+    def get(self) -> int:
+        with open(self.abs_txt_path, 'r') as file:
+            content = file.read()
+        print(f"RandomSeedCommunicator.get: {int(content)}")
+        return int(content)
+
+    def update(self):
+        new_seed = self.get() + 1
+        with open(self.abs_txt_path, 'w') as file:
+            file.write(str(new_seed))
+
+    def set(self, new_seed: int):
+        with open(self.abs_txt_path, 'w') as file:
+            file.write(str(new_seed))
 
 
 class PathCommunicator(FileCommunicator):

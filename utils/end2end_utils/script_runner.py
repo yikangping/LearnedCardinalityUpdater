@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 import subprocess
 from typing import Dict, List, Any
@@ -11,7 +12,8 @@ class BaseScriptRunner(ABC):
 
     def __init__(
             self,
-            script_path: Path, args: Dict[str, Any],
+            script_path: Path,
+            args: Dict[str, Any],
             output_file_path: Path = None
     ):
         """
@@ -22,7 +24,7 @@ class BaseScriptRunner(ABC):
         :param output_file_path: Path to the log file.
         """
         self.script_path = script_path
-        self.args = args
+        self.args = copy.deepcopy(args)
         self.log_file_path = output_file_path
 
     @abstractmethod

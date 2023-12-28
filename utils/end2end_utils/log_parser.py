@@ -64,29 +64,38 @@ def parse_experiment_records(
 
         # 统计求和变量
         for var_name in var_names:
-            var_sum = sum_var_in_log(dst_file_path, var_name=var_name)
+            var_sum = sum_float_var_in_log(dst_file_path, var_name=var_name)
             log_util.append_to_file(dst_file_path, f"Sum of {var_name} = {var_sum:.4f}\n")
 
         # 统计数组变量
         for list_name in list_names:
-            concat_list = concat_list_in_log(dst_file_path, list_name=list_name)
+            concat_list, match_cnt = concat_list_var_in_log(dst_file_path, list_name=list_name)
             # log_util.append_to_file(dst_file_path, f"Concatenated {list_name} = {concat_list}")
             if list_name == "ReportEsts":
-                l_max = np.max(concat_list)
-                quant99 = np.quantile(concat_list, 0.99)
-                quant95 = np.quantile(concat_list, 0.95)
-                l_median = np.quantile(concat_list, 0.5)
-                l_mean = np.mean(concat_list)
-                msg = (f"ReportEsts -> "
-                       f"max: {l_max:.4f}\t"
-                       f"99th: {quant99:.4f}\t"
-                       f"95th: {quant95:.4f}\t"
-                       f"median: {l_median:.4f}\t"
-                       f"mean: {l_mean:.4f}\n")
-                log_util.append_to_file(dst_file_path, content=msg)
+                def generate_report_est_str(arr: list) -> str:
+                    arr_max = np.max(arr)
+                    quant99 = np.quantile(arr, 0.99)
+                    quant95 = np.quantile(arr, 0.95)
+                    arr_median = np.quantile(arr, 0.5)
+                    arr_mean = np.mean(arr)
+                    msg = (f"max: {arr_max:.4f}\t"
+                           f"99th: {quant99:.4f}\t"
+                           f"95th: {quant95:.4f}\t"
+                           f"median: {arr_median:.4f}\t"
+                           f"mean: {arr_mean:.4f}\n")
+                    return msg
+
+                tuple_len = int(len(concat_list) / match_cnt)
+                first_query_errs = concat_list[:tuple_len]
+                first_query_est_msg = "The 1st    ReportEsts -> " + generate_report_est_str(first_query_errs)
+                log_util.append_to_file(dst_file_path, content=first_query_est_msg)
+
+                after_query_errs = concat_list[tuple_len:]
+                after_query_est_msg = "2nd to end ReportEsts -> " + generate_report_est_str(after_query_errs)
+                log_util.append_to_file(dst_file_path, content=after_query_est_msg)
 
 
-def sum_var_in_log(file_path: Path, var_name: str) -> float:
+def sum_float_var_in_log(file_path: Path, var_name: str) -> float:
     total_sum = 0.0
     with file_path.open('r') as file:
         for line in file:
@@ -101,11 +110,13 @@ def sum_var_in_log(file_path: Path, var_name: str) -> float:
     return total_sum
 
 
-def concat_list_in_log(file_path: Path, list_name: str):
+def concat_list_var_in_log(file_path: Path, list_name: str):
     concatenated_list = []
 
     # Regular expression to find the desired list name and its contents
     pattern = rf"{re.escape(list_name)}: \[([^\]]*)\]"
+
+    match_cnt = 0
 
     with file_path.open('r') as file:
         for line in file:
@@ -117,8 +128,9 @@ def concat_list_in_log(file_path: Path, list_name: str):
 
                 # Concatenate to the main list
                 concatenated_list.extend(current_list)
+                match_cnt += 1
 
-    return concatenated_list
+    return concatenated_list, match_cnt
 
 
 if __name__ == "__main__":
