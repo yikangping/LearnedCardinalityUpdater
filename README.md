@@ -118,6 +118,7 @@ python table_sample.py --run update --update sample --update_size 20000 --sample
 
 [1] Wang J, Chai C, Liu J, et al. FACE: A normalizing flow based cardinality estimator[J]. Proceedings of the VLDB Endowment, 2021, 15(1): 72-84.
 - 论文下载：http://dbgroup.cs.tsinghua.edu.cn/ligl/papers/vldb22-flow-card.pdf
+- 开源代码：https://github.com/yikangping/FACE-A-Normalizing-Flow-based-Cardinality-Estimator
 
 [2] Kurmanji M, Triantafillou P. Detect, Distill and Update: Learned DB Systems Facing Out of Distribution Data[J]. Proceedings of the ACM on Management of Data, 2023, 1(1): 1-27.
 - 论文下载：https://arxiv.org/abs/2210.05508
